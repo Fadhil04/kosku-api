@@ -302,14 +302,5 @@ ALTER TABLE "complaints" ADD CONSTRAINT "complaints_room_id_fkey" FOREIGN KEY ("
 -- AddForeignKey
 ALTER TABLE "complaint_responses" ADD CONSTRAINT "complaint_responses_complaint_id_fkey" FOREIGN KEY ("complaint_id") REFERENCES "complaints"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_owner_fk" FOREIGN KEY ("user_id") REFERENCES "owners"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_tenant_fk" FOREIGN KEY ("user_id") REFERENCES "tenants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_owner_fk" FOREIGN KEY ("user_id") REFERENCES "owners"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tenant_fk" FOREIGN KEY ("user_id") REFERENCES "tenants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Note: refresh_tokens dan password_reset_tokens menggunakan relasi polimorfik
+-- melalui user_id + user_type, tidak menggunakan FK constraint langsung.

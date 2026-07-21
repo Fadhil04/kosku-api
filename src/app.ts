@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { env } from './config/env';
+import { globalRateLimiter } from './middleware/rateLimiter';
+import { errorHandler } from './middleware/errorHandler';
+import { authRouter } from './modules/auth/auth.routes';
 
 const app = express();
 
@@ -14,6 +17,9 @@ app.use(
     credentials: true,
   }),
 );
+
+// Rate limiter global
+app.use(globalRateLimiter);
 
 // Request parsing
 app.use(express.json());
@@ -33,8 +39,8 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Routes akan ditambahkan di sini nanti
-// app.use('/api/v1/auth', authRouter);
+// Routes
+app.use('/api/v1/auth', authRouter);
 
 // 404 handler
 app.use((_req, res) => {
@@ -45,9 +51,11 @@ app.use((_req, res) => {
   });
 });
 
+// Error handler — harus paling bawah
+app.use(errorHandler);
+
 export default app;
 
-// Start server hanya kalau bukan dalam mode test
 if (require.main === module) {
   const PORT = parseInt(env.PORT, 10);
   app.listen(PORT, () => {
