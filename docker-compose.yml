@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kosku_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kosku_dev
+      POSTGRES_USER: kosku
+      POSTGRES_PASSWORD: kosku_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: kosku_postgres_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kosku_test
+      POSTGRES_USER: kosku
+      POSTGRES_PASSWORD: kosku_secret
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: kosku_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
