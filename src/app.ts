@@ -12,6 +12,8 @@ import { tenantsRouter } from './modules/tenants/tenants.routes';
 import { contractsRouter } from './modules/contracts/contracts.routes';
 import { billsRouter } from './modules/bills/bills.routes';
 import { billPaymentsRouter, paymentsRouter } from './modules/payments/payments.routes';
+import { complaintsRouter } from './modules/complaints/complaints.routes';
+
 const app = express();
 
 // Security middleware
@@ -56,6 +58,7 @@ app.use('/api/v1/contracts', contractsRouter);
 app.use('/api/v1/bills', billsRouter);
 app.use('/api/v1/bills/:billId/payments', billPaymentsRouter);
 app.use('/api/v1/payments', paymentsRouter);
+app.use('/api/v1/complaints', complaintsRouter);
 
 
 // 404 handler

@@ -6,7 +6,6 @@ import { paymentsService } from '../../src/modules/payments/payments.service';
 // Implementasi penuh butuh setup/teardown data terlebih dahulu
 
 describe('Payment Idempotency (Integration)', () => {
-
   let billId: string;
   let ownerId: string;
 
@@ -91,7 +90,6 @@ describe('Payment Idempotency (Integration)', () => {
   });
 
   it('request pembayaran dengan idempotency key sama tidak membuat record ganda', async () => {
-
     const paymentInput = {
       idempotency_key: 'idempotency-test-key-001',
       amount: 100000,
