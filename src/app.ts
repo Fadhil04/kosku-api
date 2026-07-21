@@ -14,6 +14,8 @@ import { billsRouter } from './modules/bills/bills.routes';
 import { billPaymentsRouter, paymentsRouter } from './modules/payments/payments.routes';
 import { complaintsRouter } from './modules/complaints/complaints.routes';
 import { adminRouter } from './modules/admin/admin.routes';
+import { reportsRouter } from './modules/reports/reports.routes';
+
 const app = express();
 
 // Security middleware
@@ -60,6 +62,7 @@ app.use('/api/v1/bills/:billId/payments', billPaymentsRouter);
 app.use('/api/v1/payments', paymentsRouter);
 app.use('/api/v1/complaints', complaintsRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/reports', reportsRouter);
 
 // 404 handler
 app.use((_req, res) => {

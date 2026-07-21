@@ -46,3 +46,17 @@ export const forgotPasswordRateLimiter = rateLimit({
     );
   },
 });
+
+export const reportsRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => req.context?.userId || req.ip || 'unknown',
+  handler: (_req, res) => {
+    apiResponse.error(
+      res,
+      'Terlalu banyak request laporan, tunggu sebentar',
+      429,
+      'RATE_LIMIT_EXCEEDED',
+    );
+  },
+});
