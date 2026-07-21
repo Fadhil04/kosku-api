@@ -8,6 +8,10 @@ import { errorHandler } from './middleware/errorHandler';
 import { authRouter } from './modules/auth/auth.routes';
 import { propertiesRouter } from './modules/properties/properties.routes';
 import { roomsRouter } from './modules/rooms/rooms.routes';
+import { tenantsRouter } from './modules/tenants/tenants.routes';
+import { contractsRouter } from './modules/contracts/contracts.routes';
+import { billsRouter } from './modules/bills/bills.routes';
+import { billPaymentsRouter, paymentsRouter } from './modules/payments/payments.routes';
 const app = express();
 
 // Security middleware
@@ -47,6 +51,13 @@ app.use('/api/v1/properties', propertiesRouter);
 // Rooms di-nest di bawah properties
 // Endpoint: /api/v1/properties/:propertyId/rooms
 app.use('/api/v1/properties/:propertyId/rooms', roomsRouter);
+app.use('/api/v1/tenants', tenantsRouter);
+app.use('/api/v1/contracts', contractsRouter);
+app.use('/api/v1/bills', billsRouter);
+app.use('/api/v1/bills/:billId/payments', billPaymentsRouter);
+app.use('/api/v1/payments', paymentsRouter);
+
+
 // 404 handler
 app.use((_req, res) => {
   res.status(404).json({
