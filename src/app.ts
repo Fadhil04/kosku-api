@@ -6,7 +6,8 @@ import { env } from './config/env';
 import { globalRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { authRouter } from './modules/auth/auth.routes';
-
+import { propertiesRouter } from './modules/properties/properties.routes';
+import { roomsRouter } from './modules/rooms/rooms.routes';
 const app = express();
 
 // Security middleware
@@ -41,7 +42,11 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/properties', propertiesRouter);
 
+// Rooms di-nest di bawah properties
+// Endpoint: /api/v1/properties/:propertyId/rooms
+app.use('/api/v1/properties/:propertyId/rooms', roomsRouter);
 // 404 handler
 app.use((_req, res) => {
   res.status(404).json({
