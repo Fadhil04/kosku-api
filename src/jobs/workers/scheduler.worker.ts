@@ -3,11 +3,9 @@ import { env } from '../../config/env';
 import { prisma } from '../../config/database';
 import { emailQueue } from '../queues/email.queue';
 import { processMonthlyBillGeneration } from '../processors/monthlyBillGenerator.processor';
+import { getRedisConnection } from '../../config/redis';
 
-const connection = {
-  host: new URL(env.REDIS_URL).hostname,
-  port: parseInt(new URL(env.REDIS_URL).port || '6379', 10),
-};
+const connection = getRedisConnection();
 
 export const schedulerWorker = new Worker(
   'scheduled-tasks',
