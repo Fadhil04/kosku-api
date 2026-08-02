@@ -3,6 +3,15 @@ import { emailWorker } from './jobs/workers/email.worker';
 import { schedulerWorker } from './jobs/workers/scheduler.worker';
 import { registerScheduledJobs } from './jobs/queues/scheduler.queue';
 
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+  process.exit(1);
+});
+
 async function startWorkers() {
   console.log(`Starting workers in ${env.NODE_ENV} mode...`);
 

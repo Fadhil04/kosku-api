@@ -22,3 +22,15 @@ export const emailWorker = new Worker(
     concurrency: 5,
   },
 );
+
+emailWorker.on('completed', (job) => {
+  console.log(`Email job completed: ${job.name} (${job.id})`);
+});
+
+emailWorker.on('failed', (job, err) => {
+  console.error(`Email job failed: ${job?.name} (${job?.id})`, err?.message || err);
+});
+
+emailWorker.on('error', (err) => {
+  console.error('Email worker error:', err);
+});

@@ -163,3 +163,7 @@ schedulerWorker.on('completed', (job, result) => {
 schedulerWorker.on('failed', (job, err) => {
   console.error(`✗ Scheduled task ${job?.name} gagal:`, err.message);
 });
+
+schedulerWorker.on('error', (err) => {
+  console.error('Scheduler worker error:', err);
+});
