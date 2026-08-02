@@ -4,10 +4,9 @@ import { createPaymentSchema } from './payments.schema';
 import { apiResponse } from '../../utils/apiResponse';
 
 export class PaymentsController {
-
   async createPayment(req: Request, res: Response, next: NextFunction) {
     try {
-      const { billId } = req.params;
+      const { billId } = req.params as { billId: string };
       const ownerId = req.context!.userId;
       const input = createPaymentSchema.parse(req.body);
       const result = await paymentsService.createPayment(billId, ownerId, input);
@@ -24,7 +23,7 @@ export class PaymentsController {
 
   async getPaymentsByBillId(req: Request, res: Response, next: NextFunction) {
     try {
-      const { billId } = req.params;
+      const { billId } = req.params as { billId: string };
       const ownerId = req.context!.userId;
       const data = await paymentsService.getPaymentsByBillId(billId, ownerId);
       return apiResponse.success(res, data);
@@ -35,7 +34,7 @@ export class PaymentsController {
 
   async getPaymentById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { paymentId } = req.params;
+      const { paymentId } = req.params as { paymentId: string };
       const ownerId = req.context!.userId;
       const data = await paymentsService.getPaymentById(paymentId, ownerId);
       return apiResponse.success(res, data);

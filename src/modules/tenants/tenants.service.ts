@@ -5,17 +5,12 @@ import { generateTemporaryPassword } from '../../utils/passwordGenerator';
 import { AppError } from '../../middleware/errorHandler';
 import { getPagination, getPaginationMeta } from '../../utils/pagination';
 import { welcomeTenantTemplate } from '../../utils/emailTemplates';
-import type {
-  CreateTenantInput,
-  UpdateTenantInput,
-  TenantQueryInput,
-} from './tenants.schema';
+import type { CreateTenantInput, UpdateTenantInput, TenantQueryInput } from './tenants.schema';
 
 export class TenantsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE TENANT (didaftarkan owner)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async createTenant(ownerId: string, input: CreateTenantInput) {
     const existingTenant = await prisma.tenant.findUnique({
       where: { email: input.email },
@@ -82,9 +77,9 @@ export class TenantsService {
     return tenant;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET ALL TENANTS (yang pernah/sedang menghuni properti owner)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getTenants(ownerId: string, query: TenantQueryInput) {
     const { skip, take, page, limit } = getPagination(query);
 
@@ -158,9 +153,9 @@ export class TenantsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET TENANT DETAIL
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getTenantById(tenantId: string, ownerId: string) {
     await this.verifyTenantRelationToOwner(tenantId, ownerId);
 
@@ -203,14 +198,10 @@ export class TenantsService {
     return { ...tenant, contracts };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE TENANT
-  // ────────────────────────────────────────────────
-  async updateTenant(
-    tenantId: string,
-    ownerId: string,
-    input: UpdateTenantInput,
-  ) {
+  // ------------------------------------------------
+  async updateTenant(tenantId: string, ownerId: string, input: UpdateTenantInput) {
     await this.verifyTenantRelationToOwner(tenantId, ownerId);
 
     const updated = await prisma.tenant.update({
@@ -237,9 +228,9 @@ export class TenantsService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Verifikasi tenant punya relasi dengan owner
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async verifyTenantRelationToOwner(tenantId: string, ownerId: string) {
     const relation = await prisma.contract.findFirst({
       where: { tenantId, ownerId },

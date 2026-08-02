@@ -10,15 +10,24 @@ import type {
 } from './reports.schema';
 
 const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 export class ReportsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // REVENUE REPORT
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getRevenueReport(ownerId: string, input: RevenueReportInput) {
     await propertiesService.verifyPropertyOwnership(input.property_id, ownerId);
 
@@ -103,14 +112,10 @@ export class ReportsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Tren revenue 6 bulan terakhir
-  // ────────────────────────────────────────────────
-  private async getRevenueTrend(
-    propertyId: string,
-    currentMonth: number,
-    currentYear: number,
-  ) {
+  // ------------------------------------------------
+  private async getRevenueTrend(propertyId: string, currentMonth: number, currentYear: number) {
     const months: { month: number; year: number; label: string }[] = [];
 
     for (let i = 5; i >= 0; i--) {
@@ -154,9 +159,9 @@ export class ReportsService {
     return trendData;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // OCCUPANCY REPORT
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getOccupancyReport(ownerId: string, input: OccupancyReportInput) {
     await propertiesService.verifyPropertyOwnership(input.property_id, ownerId);
 
@@ -165,11 +170,7 @@ export class ReportsService {
     });
 
     if (totalRooms === 0) {
-      throw new AppError(
-        'Properti ini belum memiliki kamar',
-        404,
-        'PROPERTY_NO_ROOMS',
-      );
+      throw new AppError('Properti ini belum memiliki kamar', 404, 'PROPERTY_NO_ROOMS');
     }
 
     // Hitung occupancy per bulan dalam satu tahun
@@ -188,10 +189,7 @@ export class ReportsService {
           },
         });
 
-        const rate =
-          totalRooms > 0
-            ? Math.round((occupiedCount / totalRooms) * 100 * 10) / 10
-            : 0;
+        const rate = totalRooms > 0 ? Math.round((occupiedCount / totalRooms) * 100 * 10) / 10 : 0;
 
         return {
           month,
@@ -250,18 +248,14 @@ export class ReportsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // PAYMENT BEHAVIOR REPORT
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getPaymentBehaviorReport(ownerId: string, input: PaymentBehaviorInput) {
     await propertiesService.verifyPropertyOwnership(input.property_id, ownerId);
 
     const now = new Date();
-    const startDate = new Date(
-      now.getFullYear(),
-      now.getMonth() - input.months + 1,
-      1,
-    );
+    const startDate = new Date(now.getFullYear(), now.getMonth() - input.months + 1, 1);
 
     // Ambil semua bill dalam periode ini beserta payment-nya
     const bills = await prisma.bill.findMany({
@@ -276,7 +270,7 @@ export class ReportsService {
     });
 
     // Hitung rata-rata keterlambatan per tenant
-    const tenantMap: Record
+    const tenantMap: Record<
       string,
       {
         tenantId: string;
@@ -311,9 +305,7 @@ export class ReportsService {
       } else if (bill.status === 'PAID' && bill.paidAt) {
         const daysLate = Math.max(
           0,
-          Math.floor(
-            (bill.paidAt.getTime() - bill.dueDate.getTime()) / (1000 * 60 * 60 * 24),
-          ),
+          Math.floor((bill.paidAt.getTime() - bill.dueDate.getTime()) / (1000 * 60 * 60 * 24)),
         );
 
         if (daysLate === 0) {
@@ -332,10 +324,7 @@ export class ReportsService {
       paid_on_time: t.paidOnTime,
       paid_late: t.paidLate,
       unpaid: t.unpaid,
-      average_days_late:
-        t.paidLate > 0
-          ? Math.round((t.totalDaysLate / t.paidLate) * 10) / 10
-          : 0,
+      average_days_late: t.paidLate > 0 ? Math.round((t.totalDaysLate / t.paidLate) * 10) / 10 : 0,
       payment_score: this.calculatePaymentScore(t),
     }));
 
@@ -360,9 +349,9 @@ export class ReportsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Hitung payment score 0-100
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   private calculatePaymentScore(data: {
     totalBills: number;
     paidOnTime: number;
@@ -375,24 +364,19 @@ export class ReportsService {
     const settledBills = data.paidOnTime + data.paidLate;
     const settledRate = settledBills / data.totalBills;
     const onTimeRate = settledBills > 0 ? data.paidOnTime / settledBills : 0;
-    const avgDaysLate =
-      data.paidLate > 0 ? data.totalDaysLate / data.paidLate : 0;
+    const avgDaysLate = data.paidLate > 0 ? data.totalDaysLate / data.paidLate : 0;
 
     // Formula: 60% dari settled rate + 30% dari on-time rate + 10% dari hari keterlambatan
     const latePenalty = Math.min(avgDaysLate / 30, 1); // max penalty kalau rata-rata terlambat 30 hari
-    const score =
-      settledRate * 60 + onTimeRate * 30 + (1 - latePenalty) * 10;
+    const score = settledRate * 60 + onTimeRate * 30 + (1 - latePenalty) * 10;
 
     return Math.round(score);
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // COMPLAINTS SUMMARY REPORT
-  // ────────────────────────────────────────────────
-  async getComplaintsSummaryReport(
-    ownerId: string,
-    input: ComplaintsSummaryInput,
-  ) {
+  // ------------------------------------------------
+  async getComplaintsSummaryReport(ownerId: string, input: ComplaintsSummaryInput) {
     await propertiesService.verifyPropertyOwnership(input.property_id, ownerId);
 
     const now = new Date();
@@ -407,39 +391,38 @@ export class ReportsService {
       createdAt: { gte: startDate, lte: endDate },
     };
 
-    const [byStatus, byCategory, byPriority, avgResolutionTime] =
-      await Promise.all([
-        // Count per status
-        prisma.complaint.groupBy({
-          by: ['status'],
-          where,
-          _count: { status: true },
-        }),
+    const [byStatus, byCategory, byPriority, avgResolutionTime] = await Promise.all([
+      // Count per status
+      prisma.complaint.groupBy({
+        by: ['status'],
+        where,
+        _count: { status: true },
+      }),
 
-        // Count per kategori
-        prisma.complaint.groupBy({
-          by: ['category'],
-          where,
-          _count: { category: true },
-        }),
+      // Count per kategori
+      prisma.complaint.groupBy({
+        by: ['category'],
+        where,
+        _count: { category: true },
+      }),
 
-        // Count per prioritas
-        prisma.complaint.groupBy({
-          by: ['priority'],
-          where,
-          _count: { priority: true },
-        }),
+      // Count per prioritas
+      prisma.complaint.groupBy({
+        by: ['priority'],
+        where,
+        _count: { priority: true },
+      }),
 
-        // Rata-rata waktu resolusi (dalam jam) untuk yang sudah RESOLVED/CLOSED
-        prisma.complaint.findMany({
-          where: {
-            ...where,
-            status: { in: ['RESOLVED', 'CLOSED'] },
-            resolvedAt: { not: null },
-          },
-          select: { createdAt: true, resolvedAt: true },
-        }),
-      ]);
+      // Rata-rata waktu resolusi (dalam jam) untuk yang sudah RESOLVED/CLOSED
+      prisma.complaint.findMany({
+        where: {
+          ...where,
+          status: { in: ['RESOLVED', 'CLOSED'] },
+          resolvedAt: { not: null },
+        },
+        select: { createdAt: true, resolvedAt: true },
+      }),
+    ]);
 
     // Hitung rata-rata waktu resolusi
     const resolutionHours = avgResolutionTime
@@ -452,9 +435,7 @@ export class ReportsService {
     const avgResolutionHours =
       resolutionHours.length > 0
         ? Math.round(
-            (resolutionHours.reduce((sum, h) => sum + h, 0) /
-              resolutionHours.length) *
-              10,
+            (resolutionHours.reduce((sum, h) => sum + h, 0) / resolutionHours.length) * 10,
           ) / 10
         : null;
 
@@ -494,20 +475,15 @@ export class ReportsService {
         tenant_name: c.tenant.fullName,
         room_number: c.room.roomNumber,
         created_at: c.createdAt,
-        days_open: Math.floor(
-          (now.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24),
-        ),
+        days_open: Math.floor((now.getTime() - c.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
       })),
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // EXPIRING CONTRACTS REPORT
-  // ────────────────────────────────────────────────
-  async getExpiringContractsReport(
-    ownerId: string,
-    input: ExpiringContractsReportInput,
-  ) {
+  // ------------------------------------------------
+  async getExpiringContractsReport(ownerId: string, input: ExpiringContractsReportInput) {
     const now = new Date();
     const futureDate = new Date(now.getTime() + input.days * 24 * 60 * 60 * 1000);
 
@@ -560,9 +536,9 @@ export class ReportsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // DASHBOARD SUMMARY (gabungan ringkas semua laporan)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getDashboardSummary(ownerId: string) {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -668,16 +644,12 @@ export class ReportsService {
 
     const occupiedRooms = statusMap['OCCUPIED'] || 0;
     const occupancyRate =
-      totalRooms > 0
-        ? Math.round((occupiedRooms / totalRooms) * 100 * 10) / 10
-        : 0;
+      totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100 * 10) / 10 : 0;
 
     const totalBilled = Number(currentMonthBilled._sum.totalAmount || 0);
     const totalCollected = Number(currentMonthCollected._sum.totalAmount || 0);
     const collectionRate =
-      totalBilled > 0
-        ? Math.round((totalCollected / totalBilled) * 100 * 10) / 10
-        : 0;
+      totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100 * 10) / 10 : 0;
 
     return {
       total_properties: properties.length,

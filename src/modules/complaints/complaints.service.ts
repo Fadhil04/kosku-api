@@ -11,10 +11,9 @@ import type {
 } from './complaints.schema';
 
 export class ComplaintsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE COMPLAINT (tenant only)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async createComplaint(tenantId: string, input: CreateComplaintInput) {
     // Verifikasi tenant punya kontrak aktif di kamar ini
     const activeContract = await prisma.contract.findFirst({
@@ -84,14 +83,10 @@ export class ComplaintsService {
     return complaint;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET COMPLAINTS (akses berbeda owner vs tenant)
-  // ────────────────────────────────────────────────
-  async getComplaints(
-    userId: string,
-    role: 'owner' | 'tenant',
-    query: ComplaintQueryInput,
-  ) {
+  // ------------------------------------------------
+  async getComplaints(userId: string, role: 'owner' | 'tenant', query: ComplaintQueryInput) {
     const { skip, take, page, limit } = getPagination(query);
 
     const where = {
@@ -125,14 +120,10 @@ export class ComplaintsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET COMPLAINT DETAIL
-  // ────────────────────────────────────────────────
-  async getComplaintById(
-    complaintId: string,
-    userId: string,
-    role: 'owner' | 'tenant',
-  ) {
+  // ------------------------------------------------
+  async getComplaintById(complaintId: string, userId: string, role: 'owner' | 'tenant') {
     const complaint = await prisma.complaint.findFirst({
       where: {
         id: complaintId,
@@ -156,14 +147,10 @@ export class ComplaintsService {
     return complaint;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE STATUS (state machine, owner only)
-  // ────────────────────────────────────────────────
-  async updateStatus(
-    complaintId: string,
-    ownerId: string,
-    input: UpdateComplaintStatusInput,
-  ) {
+  // ------------------------------------------------
+  async updateStatus(complaintId: string, ownerId: string, input: UpdateComplaintStatusInput) {
     const complaint = await prisma.complaint.findFirst({
       where: { id: complaintId, property: { ownerId } },
       include: { tenant: { select: { fullName: true, email: true } } },
@@ -174,7 +161,7 @@ export class ComplaintsService {
     }
 
     const currentIndex = COMPLAINT_STATUS_ORDER.indexOf(
-      complaint.status as typeof COMPLAINT_STATUS_ORDER[number],
+      complaint.status as (typeof COMPLAINT_STATUS_ORDER)[number],
     );
     const newIndex = COMPLAINT_STATUS_ORDER.indexOf(input.status);
 
@@ -250,9 +237,9 @@ export class ComplaintsService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // ADD RESPONSE (owner atau tenant pemilik komplain)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async addResponse(
     complaintId: string,
     userId: string,
@@ -291,9 +278,9 @@ export class ComplaintsService {
     return response;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET COMPLAINTS SUMMARY (untuk dashboard ringkas)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getComplaintsSummary(ownerId: string, propertyId?: string) {
     const where = {
       property: { ownerId },

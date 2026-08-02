@@ -10,7 +10,6 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class ContractsController {
-
   async createContract(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.context!.userId;
@@ -39,7 +38,7 @@ export class ContractsController {
 
   async getContractById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { contractId } = req.params;
+      const { contractId } = req.params as { contractId: string };
       const ownerId = req.context!.userId;
       const data = await contractsService.getContractById(contractId, ownerId);
       return apiResponse.success(res, data);
@@ -61,7 +60,7 @@ export class ContractsController {
 
   async terminateContract(req: Request, res: Response, next: NextFunction) {
     try {
-      const { contractId } = req.params;
+      const { contractId } = req.params as { contractId: string };
       const ownerId = req.context!.userId;
       const input = terminateContractSchema.parse(req.body);
       const data = await contractsService.terminateContract(contractId, ownerId, input);
@@ -73,7 +72,7 @@ export class ContractsController {
 
   async renewContract(req: Request, res: Response, next: NextFunction) {
     try {
-      const { contractId } = req.params;
+      const { contractId } = req.params as { contractId: string };
       const ownerId = req.context!.userId;
       const input = renewContractSchema.parse(req.body);
       const data = await contractsService.renewContract(contractId, ownerId, input);

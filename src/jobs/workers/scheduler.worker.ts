@@ -32,10 +32,10 @@ export const schedulerWorker = new Worker(
   { connection, concurrency: 1 }, // scheduler jalan satu per satu, tidak perlu paralel
 );
 
-// ────────────────────────────────────────────────
+// ------------------------------------------------
 // Cek semua bill yang perlu reminder hari ini,
 // lalu push masing-masing sebagai job terpisah ke email queue
-// ────────────────────────────────────────────────
+// ------------------------------------------------
 async function checkAndQueueBillReminders() {
   const now = new Date();
   let totalQueued = 0;
@@ -128,9 +128,9 @@ async function checkAndQueueBillReminders() {
   return { totalQueued };
 }
 
-// ────────────────────────────────────────────────
+// ------------------------------------------------
 // Cek kontrak yang akan expire dalam 30 hari
-// ────────────────────────────────────────────────
+// ------------------------------------------------
 async function checkAndQueueExpiringContracts() {
   const now = new Date();
   const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);

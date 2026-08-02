@@ -8,7 +8,6 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class PropertiesController {
-
   async createProperty(req: Request, res: Response, next: NextFunction) {
     try {
       const input = createPropertySchema.parse(req.body);
@@ -33,7 +32,7 @@ export class PropertiesController {
 
   async getPropertyById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const data = await propertiesService.getPropertyById(propertyId, ownerId);
       return apiResponse.success(res, data);
@@ -44,7 +43,7 @@ export class PropertiesController {
 
   async updateProperty(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const input = updatePropertySchema.parse(req.body);
       const data = await propertiesService.updateProperty(propertyId, ownerId, input);
@@ -56,7 +55,7 @@ export class PropertiesController {
 
   async deleteProperty(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const data = await propertiesService.deleteProperty(propertyId, ownerId);
       return apiResponse.success(res, data);

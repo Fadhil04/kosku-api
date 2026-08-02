@@ -5,25 +5,30 @@ import { paymentConfirmedTemplate } from '../../utils/emailTemplates';
 import type { CreatePaymentInput } from './payments.schema';
 
 const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 export class PaymentsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE PAYMENT — dengan idempotency
-  // ────────────────────────────────────────────────
-  async createPayment(
-    billId: string,
-    ownerId: string,
-    input: CreatePaymentInput,
-  ) {
-    // ──────────────────────────────────────────
+  // ------------------------------------------------
+  async createPayment(billId: string, ownerId: string, input: CreatePaymentInput) {
+    // ------------------------------------------------
     // STEP 1: Cek idempotency key terlebih dulu
     // Kalau key ini sudah pernah dipakai, langsung return
     // data yang sudah ada tanpa membuat record baru
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     const existingPayment = await prisma.payment.findUnique({
       where: { idempotencyKey: input.idempotency_key },
       include: { bill: true },
@@ -38,9 +43,9 @@ export class PaymentsService {
       };
     }
 
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     // STEP 2: Validasi bill
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     const bill = await prisma.bill.findFirst({
       where: { id: billId, room: { property: { ownerId } } },
       include: {
@@ -54,11 +59,7 @@ export class PaymentsService {
     }
 
     if (bill.status === 'PAID') {
-      throw new AppError(
-        'Tagihan ini sudah lunas',
-        409,
-        'BILL_ALREADY_PAID',
-      );
+      throw new AppError('Tagihan ini sudah lunas', 409, 'BILL_ALREADY_PAID');
     }
 
     if (bill.status === 'WAIVED') {
@@ -70,10 +71,7 @@ export class PaymentsService {
     }
 
     // Hitung total yang sudah dibayar sebelumnya
-    const totalAlreadyPaid = bill.payments.reduce(
-      (sum, p) => sum + Number(p.amount),
-      0,
-    );
+    const totalAlreadyPaid = bill.payments.reduce((sum, p) => sum + Number(p.amount), 0);
 
     const remainingAmount =
       Number(bill.totalAmount) - Number(bill.discountAmount) - totalAlreadyPaid;
@@ -87,12 +85,11 @@ export class PaymentsService {
       );
     }
 
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     // STEP 3: Transaction — simpan payment dan update status bill
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     const newTotalPaid = totalAlreadyPaid + input.amount;
-    const billTotalAfterDiscount =
-      Number(bill.totalAmount) - Number(bill.discountAmount);
+    const billTotalAfterDiscount = Number(bill.totalAmount) - Number(bill.discountAmount);
     const isFullyPaid = newTotalPaid >= billTotalAfterDiscount;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -183,8 +180,7 @@ export class PaymentsService {
     return {
       payments,
       total_paid: totalPaid,
-      remaining_amount:
-        Number(bill.totalAmount) - Number(bill.discountAmount) - totalPaid,
+      remaining_amount: Number(bill.totalAmount) - Number(bill.discountAmount) - totalPaid,
     };
   }
 
@@ -208,11 +204,7 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      throw new AppError(
-        'Data pembayaran tidak ditemukan',
-        404,
-        'PAYMENT_NOT_FOUND',
-      );
+      throw new AppError('Data pembayaran tidak ditemukan', 404, 'PAYMENT_NOT_FOUND');
     }
 
     return payment;

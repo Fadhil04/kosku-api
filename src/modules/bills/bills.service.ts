@@ -10,15 +10,10 @@ import type {
 } from './bills.schema';
 
 export class BillsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET ALL BILLS (akses berbeda untuk owner dan tenant)
-  // ────────────────────────────────────────────────
-  async getBills(
-    userId: string,
-    role: 'owner' | 'tenant',
-    query: BillQueryInput,
-  ) {
+  // ------------------------------------------------
+  async getBills(userId: string, role: 'owner' | 'tenant', query: BillQueryInput) {
     const { skip, take, page, limit } = getPagination(query);
 
     const where: Record<string, unknown> = {
@@ -57,9 +52,9 @@ export class BillsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET BILL DETAIL
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getBillById(billId: string, userId: string, role: 'owner' | 'tenant') {
     const bill = await prisma.bill.findFirst({
       where: {
@@ -82,9 +77,9 @@ export class BillsService {
     return this.attachLateFeeInfo(bill);
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET OVERDUE BILLS
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getOverdueBills(ownerId: string, query: OverdueBillQueryInput) {
     const bills = await prisma.bill.findMany({
       where: {
@@ -108,14 +103,10 @@ export class BillsService {
     return withLateFee;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // APPLY DISCOUNT
-  // ────────────────────────────────────────────────
-  async applyDiscount(
-    billId: string,
-    ownerId: string,
-    input: DiscountBillInput,
-  ) {
+  // ------------------------------------------------
+  async applyDiscount(billId: string, ownerId: string, input: DiscountBillInput) {
     const bill = await this.verifyBillOwnership(billId, ownerId);
 
     if (bill.status === 'PAID' || bill.status === 'WAIVED') {
@@ -160,9 +151,9 @@ export class BillsService {
     return this.attachLateFeeInfo(updated);
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // WAIVE BILL
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async waiveBill(billId: string, ownerId: string, input: WaiveBillInput) {
     const bill = await this.verifyBillOwnership(billId, ownerId);
 
@@ -197,17 +188,19 @@ export class BillsService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Tempel info late fee ke object bill
-  // ────────────────────────────────────────────────
-  private attachLateFeeInfo<T extends {
-    totalAmount: unknown;
-    dueDate: Date;
-    lateFeePercentage: unknown;
-    lateFeeMaxPercentage: unknown;
-    status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'WAIVED';
-    discountAmount: unknown;
-  }>(bill: T) {
+  // ------------------------------------------------
+  private attachLateFeeInfo<
+    T extends {
+      totalAmount: unknown;
+      dueDate: Date;
+      lateFeePercentage: unknown;
+      lateFeeMaxPercentage: unknown;
+      status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'WAIVED';
+      discountAmount: unknown;
+    },
+  >(bill: T) {
     const totalAmount = Number(bill.totalAmount);
     const discountAmount = Number(bill.discountAmount);
     const amountAfterDiscount = totalAmount - discountAmount;
@@ -233,9 +226,9 @@ export class BillsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Verifikasi bill milik owner
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async verifyBillOwnership(billId: string, ownerId: string) {
     const bill = await prisma.bill.findFirst({
       where: { id: billId, room: { property: { ownerId } } },

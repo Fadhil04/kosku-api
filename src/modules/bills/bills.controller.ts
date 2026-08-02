@@ -9,16 +9,11 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class BillsController {
-
   async getBills(req: Request, res: Response, next: NextFunction) {
     try {
       const { userId, role } = req.context!;
       const query = billQuerySchema.parse(req.query);
-      const result = await billsService.getBills(
-        userId,
-        role as 'owner' | 'tenant',
-        query,
-      );
+      const result = await billsService.getBills(userId, role as 'owner' | 'tenant', query);
       return apiResponse.success(res, result.data, 'Berhasil', 200, result.meta);
     } catch (error) {
       next(error);
@@ -27,13 +22,9 @@ export class BillsController {
 
   async getBillById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { billId } = req.params;
+      const { billId } = req.params as { billId: string };
       const { userId, role } = req.context!;
-      const data = await billsService.getBillById(
-        billId,
-        userId,
-        role as 'owner' | 'tenant',
-      );
+      const data = await billsService.getBillById(billId, userId, role as 'owner' | 'tenant');
       return apiResponse.success(res, data);
     } catch (error) {
       next(error);
@@ -53,7 +44,7 @@ export class BillsController {
 
   async applyDiscount(req: Request, res: Response, next: NextFunction) {
     try {
-      const { billId } = req.params;
+      const { billId } = req.params as { billId: string };
       const ownerId = req.context!.userId;
       const input = discountBillSchema.parse(req.body);
       const data = await billsService.applyDiscount(billId, ownerId, input);
@@ -65,7 +56,7 @@ export class BillsController {
 
   async waiveBill(req: Request, res: Response, next: NextFunction) {
     try {
-      const { billId } = req.params;
+      const { billId } = req.params as { billId: string };
       const ownerId = req.context!.userId;
       const input = waiveBillSchema.parse(req.body);
       const data = await billsService.waiveBill(billId, ownerId, input);

@@ -8,10 +8,9 @@ import type {
 } from './properties.schema';
 
 export class PropertiesService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE PROPERTY
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async createProperty(ownerId: string, input: CreatePropertyInput) {
     const property = await prisma.property.create({
       data: {
@@ -31,9 +30,9 @@ export class PropertiesService {
     return property;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET ALL PROPERTIES (milik owner yang login)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getProperties(ownerId: string, query: PropertyQueryInput) {
     const { skip, take, page, limit } = getPagination(query);
 
@@ -87,9 +86,9 @@ export class PropertiesService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET PROPERTY DETAIL
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getPropertyById(propertyId: string, ownerId: string) {
     const property = await prisma.property.findFirst({
       where: {
@@ -123,14 +122,10 @@ export class PropertiesService {
     return { ...property, stats };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE PROPERTY
-  // ────────────────────────────────────────────────
-  async updateProperty(
-    propertyId: string,
-    ownerId: string,
-    input: UpdatePropertyInput,
-  ) {
+  // ------------------------------------------------
+  async updateProperty(propertyId: string, ownerId: string, input: UpdatePropertyInput) {
     await this.verifyPropertyOwnership(propertyId, ownerId);
 
     const updated = await prisma.property.update({
@@ -151,9 +146,9 @@ export class PropertiesService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // DELETE PROPERTY (soft delete)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async deleteProperty(propertyId: string, ownerId: string) {
     await this.verifyPropertyOwnership(propertyId, ownerId);
 
@@ -181,9 +176,9 @@ export class PropertiesService {
     return { message: 'Properti berhasil dihapus' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Statistik ringkas untuk list
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   private async getPropertyQuickStats(propertyId: string) {
     const [roomStats, unpaidBills] = await Promise.all([
       prisma.room.groupBy({
@@ -218,50 +213,46 @@ export class PropertiesService {
       available_rooms: availableRooms,
       reserved_rooms: reservedRooms,
       maintenance_rooms: maintenanceRooms,
-      occupancy_rate:
-        totalRooms > 0
-          ? Math.round((occupiedRooms / totalRooms) * 100 * 10) / 10
-          : 0,
+      occupancy_rate: totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100 * 10) / 10 : 0,
       unpaid_bills_count: unpaidBills._count.id,
       unpaid_bills_total: Number(unpaidBills._sum.totalAmount || 0),
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Statistik lengkap untuk detail
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   private async getPropertyDetailStats(propertyId: string) {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    const [quickStats, currentMonthBills, contractsExpiringSoon] =
-      await Promise.all([
-        this.getPropertyQuickStats(propertyId),
+    const [quickStats, currentMonthBills, contractsExpiringSoon] = await Promise.all([
+      this.getPropertyQuickStats(propertyId),
 
-        // Tagihan bulan ini
-        prisma.bill.aggregate({
-          where: {
-            propertyId,
-            periodMonth: currentMonth,
-            periodYear: currentYear,
-          },
-          _sum: { totalAmount: true },
-          _count: { id: true },
-        }),
+      // Tagihan bulan ini
+      prisma.bill.aggregate({
+        where: {
+          propertyId,
+          periodMonth: currentMonth,
+          periodYear: currentYear,
+        },
+        _sum: { totalAmount: true },
+        _count: { id: true },
+      }),
 
-        // Kontrak yang akan berakhir dalam 30 hari
-        prisma.contract.count({
-          where: {
-            room: { propertyId },
-            status: 'ACTIVE',
-            endDate: {
-              lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-              gte: now,
-            },
+      // Kontrak yang akan berakhir dalam 30 hari
+      prisma.contract.count({
+        where: {
+          room: { propertyId },
+          status: 'ACTIVE',
+          endDate: {
+            lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+            gte: now,
           },
-        }),
-      ]);
+        },
+      }),
+    ]);
 
     // Tagihan bulan ini yang sudah dibayar
     const paidBills = await prisma.bill.aggregate({
@@ -282,16 +273,14 @@ export class PropertiesService {
       current_month_billed: totalBilled,
       current_month_collected: totalCollected,
       collection_rate:
-        totalBilled > 0
-          ? Math.round((totalCollected / totalBilled) * 100 * 10) / 10
-          : 0,
+        totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100 * 10) / 10 : 0,
       contracts_expiring_30_days: contractsExpiringSoon,
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Verifikasi ownership
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async verifyPropertyOwnership(propertyId: string, ownerId: string) {
     const property = await prisma.property.findFirst({
       where: { id: propertyId, ownerId, deletedAt: null },

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 import { env } from '../config/env';
 import { JwtPayload } from '../types';
 
@@ -9,7 +10,7 @@ export const generateAccessToken = (payload: Omit<JwtPayload, 'iat' | 'exp'>): s
 };
 
 export const generateRefreshToken = (payload: Omit<JwtPayload, 'iat' | 'exp'>): string => {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ ...payload, jti: randomUUID() }, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRY,
   } as jwt.SignOptions);
 };

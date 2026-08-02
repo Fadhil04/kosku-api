@@ -9,7 +9,6 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class ComplaintsController {
-
   async createComplaint(req: Request, res: Response, next: NextFunction) {
     try {
       const tenantId = req.context!.userId;
@@ -38,7 +37,7 @@ export class ComplaintsController {
 
   async getComplaintById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { complaintId } = req.params;
+      const { complaintId } = req.params as { complaintId: string };
       const { userId, role } = req.context!;
       const data = await complaintsService.getComplaintById(
         complaintId,
@@ -53,7 +52,7 @@ export class ComplaintsController {
 
   async updateStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { complaintId } = req.params;
+      const { complaintId } = req.params as { complaintId: string };
       const ownerId = req.context!.userId;
       const input = updateComplaintStatusSchema.parse(req.body);
       const data = await complaintsService.updateStatus(complaintId, ownerId, input);
@@ -65,7 +64,7 @@ export class ComplaintsController {
 
   async addResponse(req: Request, res: Response, next: NextFunction) {
     try {
-      const { complaintId } = req.params;
+      const { complaintId } = req.params as { complaintId: string };
       const { userId, role } = req.context!;
       const input = addResponseSchema.parse(req.body);
       const data = await complaintsService.addResponse(

@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { apiResponse } from '../utils/apiResponse';
 
 export const globalRateLimiter = rateLimit({
@@ -50,7 +50,7 @@ export const forgotPasswordRateLimiter = rateLimit({
 export const reportsRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
-  keyGenerator: (req) => req.context?.userId || req.ip || 'unknown',
+  keyGenerator: (req) => req.context?.userId ?? ipKeyGenerator(req.ip ?? ''),
   handler: (_req, res) => {
     apiResponse.error(
       res,

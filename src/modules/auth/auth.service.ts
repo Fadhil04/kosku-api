@@ -9,9 +9,7 @@ import {
 } from '../../utils/jwt';
 import { generateRandomToken, getPasswordResetExpiry } from '../../utils/token';
 import { AppError } from '../../middleware/errorHandler';
-import {
-  passwordResetTemplate,
-} from '../../utils/emailTemplates';
+import { passwordResetTemplate } from '../../utils/emailTemplates';
 import type {
   RegisterOwnerInput,
   LoginInput,
@@ -23,10 +21,9 @@ import type {
 } from './auth.schema';
 
 export class AuthService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // REGISTER OWNER
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async registerOwner(input: RegisterOwnerInput) {
     const existingOwner = await prisma.owner.findUnique({
       where: { email: input.email },
@@ -56,14 +53,20 @@ export class AuthService {
     return owner;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // LOGIN
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async login(input: LoginInput, ipAddress: string) {
     const role = input.role;
 
     // Ambil user sesuai role
-    let user: { id: string; email: string; fullName: string; passwordHash: string; isActive: boolean } | null = null;
+    let user: {
+      id: string;
+      email: string;
+      fullName: string;
+      passwordHash: string;
+      isActive: boolean;
+    } | null = null;
 
     if (role === 'owner') {
       user = await prisma.owner.findFirst({
@@ -90,11 +93,7 @@ export class AuthService {
     }
 
     if (!user) {
-      throw new AppError(
-        'Email atau password salah',
-        401,
-        'AUTH_LOGIN_INVALID_CREDENTIALS',
-      );
+      throw new AppError('Email atau password salah', 401, 'AUTH_LOGIN_INVALID_CREDENTIALS');
     }
 
     if (!user.isActive) {
@@ -107,11 +106,7 @@ export class AuthService {
 
     const isPasswordValid = await comparePassword(input.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new AppError(
-        'Email atau password salah',
-        401,
-        'AUTH_LOGIN_INVALID_CREDENTIALS',
-      );
+      throw new AppError('Email atau password salah', 401, 'AUTH_LOGIN_INVALID_CREDENTIALS');
     }
 
     // Generate tokens
@@ -155,9 +150,9 @@ export class AuthService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // REFRESH TOKEN
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async refreshToken(input: RefreshTokenInput) {
     let payload;
     try {
@@ -215,9 +210,9 @@ export class AuthService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // LOGOUT
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async logout(refreshToken: string) {
     const storedToken = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
@@ -233,9 +228,9 @@ export class AuthService {
     return { message: 'Logout berhasil' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // FORGOT PASSWORD
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async forgotPassword(input: ForgotPasswordInput) {
     let user: { id: string; fullName: string } | null = null;
 
@@ -292,9 +287,9 @@ export class AuthService {
     return { message: 'Jika email terdaftar, link reset akan dikirim' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // RESET PASSWORD
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async resetPassword(input: ResetPasswordInput) {
     const resetRecord = await prisma.passwordResetToken.findUnique({
       where: { token: input.token },
@@ -345,9 +340,9 @@ export class AuthService {
     return { message: 'Password berhasil direset, silakan login kembali' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET PROFILE
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getProfile(userId: string, role: string) {
     if (role === 'owner') {
       const owner = await prisma.owner.findFirst({
@@ -384,9 +379,9 @@ export class AuthService {
     return { ...tenant, role: 'tenant' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE PROFILE
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async updateProfile(userId: string, role: string, input: UpdateProfileInput) {
     if (role === 'owner') {
       const updated = await prisma.owner.update({
@@ -423,9 +418,9 @@ export class AuthService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CHANGE PASSWORD
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async changePassword(userId: string, role: string, input: ChangePasswordInput) {
     let currentHash = '';
 

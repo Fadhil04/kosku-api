@@ -12,15 +12,10 @@ import type {
 } from './rooms.schema';
 
 export class RoomsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE ROOM
-  // ────────────────────────────────────────────────
-  async createRoom(
-    propertyId: string,
-    ownerId: string,
-    input: CreateRoomInput,
-  ) {
+  // ------------------------------------------------
+  async createRoom(propertyId: string, ownerId: string, input: CreateRoomInput) {
     // Verifikasi ownership properti
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
@@ -59,14 +54,10 @@ export class RoomsService {
     return room;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET ALL ROOMS
-  // ────────────────────────────────────────────────
-  async getRooms(
-    propertyId: string,
-    ownerId: string,
-    query: RoomQueryInput,
-  ) {
+  // ------------------------------------------------
+  async getRooms(propertyId: string, ownerId: string, query: RoomQueryInput) {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
     const { skip, take, page, limit } = getPagination(query);
@@ -128,9 +119,9 @@ export class RoomsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET AVAILABLE ROOMS
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async getAvailableRooms(propertyId: string, ownerId: string) {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
@@ -146,14 +137,10 @@ export class RoomsService {
     return rooms;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // GET ROOM BY ID
-  // ────────────────────────────────────────────────
-  async getRoomById(
-    propertyId: string,
-    roomId: string,
-    ownerId: string,
-  ) {
+  // ------------------------------------------------
+  async getRoomById(propertyId: string, roomId: string, ownerId: string) {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
     const room = await prisma.room.findFirst({
@@ -195,15 +182,10 @@ export class RoomsService {
     return { ...room, stats };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE ROOM
-  // ────────────────────────────────────────────────
-  async updateRoom(
-    propertyId: string,
-    roomId: string,
-    ownerId: string,
-    input: UpdateRoomInput,
-  ) {
+  // ------------------------------------------------
+  async updateRoom(propertyId: string, roomId: string, ownerId: string, input: UpdateRoomInput) {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
     await this.verifyRoomBelongsToProperty(roomId, propertyId);
 
@@ -223,9 +205,9 @@ export class RoomsService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // UPDATE ROOM STATUS (state machine)
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async updateRoomStatus(
     propertyId: string,
     roomId: string,
@@ -288,14 +270,10 @@ export class RoomsService {
     return updated;
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // DELETE ROOM (soft delete)
-  // ────────────────────────────────────────────────
-  async deleteRoom(
-    propertyId: string,
-    roomId: string,
-    ownerId: string,
-  ) {
+  // ------------------------------------------------
+  async deleteRoom(propertyId: string, roomId: string, ownerId: string) {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
     const room = await this.verifyRoomBelongsToProperty(roomId, propertyId);
@@ -328,9 +306,9 @@ export class RoomsService {
     return { message: 'Kamar berhasil dihapus' };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Statistik kamar
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   private async getRoomStats(roomId: string) {
     const [totalContracts, totalBilled, totalCollected] = await Promise.all([
       prisma.contract.count({ where: { roomId } }),
@@ -355,20 +333,16 @@ export class RoomsService {
     };
   }
 
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // HELPER: Verifikasi kamar milik properti
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async verifyRoomBelongsToProperty(roomId: string, propertyId: string) {
     const room = await prisma.room.findFirst({
       where: { id: roomId, propertyId, deletedAt: null },
     });
 
     if (!room) {
-      throw new AppError(
-        'Kamar tidak ditemukan di properti ini',
-        404,
-        'ROOM_NOT_FOUND',
-      );
+      throw new AppError('Kamar tidak ditemukan di properti ini', 404, 'ROOM_NOT_FOUND');
     }
 
     return room;

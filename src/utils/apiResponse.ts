@@ -41,8 +41,10 @@ export const apiResponse = {
     return res.status(statusCode).json({
       success: false,
       message,
-      code,
-      ...(details ? { details } : {}),
+      error: {
+        code,
+        ...(details ? { details } : {}),
+      },
     });
   },
 };

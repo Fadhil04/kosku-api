@@ -9,10 +9,9 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class RoomsController {
-
   async createRoom(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const input = createRoomSchema.parse(req.body);
       const data = await roomsService.createRoom(propertyId, ownerId, input);
@@ -24,7 +23,7 @@ export class RoomsController {
 
   async getRooms(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const query = roomQuerySchema.parse(req.query);
       const result = await roomsService.getRooms(propertyId, ownerId, query);
@@ -36,7 +35,7 @@ export class RoomsController {
 
   async getAvailableRooms(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId } = req.params;
+      const { propertyId } = req.params as { propertyId: string };
       const ownerId = req.context!.userId;
       const data = await roomsService.getAvailableRooms(propertyId, ownerId);
       return apiResponse.success(res, data);
@@ -47,7 +46,7 @@ export class RoomsController {
 
   async getRoomById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId, roomId } = req.params;
+      const { propertyId, roomId } = req.params as { propertyId: string; roomId: string };
       const ownerId = req.context!.userId;
       const data = await roomsService.getRoomById(propertyId, roomId, ownerId);
       return apiResponse.success(res, data);
@@ -58,7 +57,7 @@ export class RoomsController {
 
   async updateRoom(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId, roomId } = req.params;
+      const { propertyId, roomId } = req.params as { propertyId: string; roomId: string };
       const ownerId = req.context!.userId;
       const input = updateRoomSchema.parse(req.body);
       const data = await roomsService.updateRoom(propertyId, roomId, ownerId, input);
@@ -70,15 +69,10 @@ export class RoomsController {
 
   async updateRoomStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId, roomId } = req.params;
+      const { propertyId, roomId } = req.params as { propertyId: string; roomId: string };
       const ownerId = req.context!.userId;
       const input = updateRoomStatusSchema.parse(req.body);
-      const data = await roomsService.updateRoomStatus(
-        propertyId,
-        roomId,
-        ownerId,
-        input,
-      );
+      const data = await roomsService.updateRoomStatus(propertyId, roomId, ownerId, input);
       return apiResponse.success(res, data, 'Status kamar berhasil diperbarui');
     } catch (error) {
       next(error);
@@ -87,7 +81,7 @@ export class RoomsController {
 
   async deleteRoom(req: Request, res: Response, next: NextFunction) {
     try {
-      const { propertyId, roomId } = req.params;
+      const { propertyId, roomId } = req.params as { propertyId: string; roomId: string };
       const ownerId = req.context!.userId;
       const data = await roomsService.deleteRoom(propertyId, roomId, ownerId);
       return apiResponse.success(res, data);

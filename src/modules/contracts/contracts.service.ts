@@ -3,9 +3,7 @@ import { sendEmail } from '../../config/email';
 import { AppError } from '../../middleware/errorHandler';
 import { getPagination, getPaginationMeta } from '../../utils/pagination';
 import { generateBillsForContract, generateSingleBill } from '../../utils/billGenerator';
-import {
-  contractCreatedTenantTemplate,
-} from '../../utils/emailTemplates';
+import { contractCreatedTenantTemplate } from '../../utils/emailTemplates';
 import type {
   CreateContractInput,
   TerminateContractInput,
@@ -15,15 +13,24 @@ import type {
 } from './contracts.schema';
 
 const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
 export class ContractsService {
-
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   // CREATE CONTRACT — inti dari kompleksitas sistem ini
-  // ────────────────────────────────────────────────
+  // ------------------------------------------------
   async createContract(ownerId: string, input: CreateContractInput) {
     // Validasi room: harus milik owner ini dan berstatus AVAILABLE
     const room = await prisma.room.findFirst({
@@ -36,11 +43,7 @@ export class ContractsService {
     }
 
     if (room.property.ownerId !== ownerId) {
-      throw new AppError(
-        'Kamu tidak memiliki akses ke kamar ini',
-        403,
-        'ROOM_ACCESS_DENIED',
-      );
+      throw new AppError('Kamu tidak memiliki akses ke kamar ini', 403, 'ROOM_ACCESS_DENIED');
     }
 
     if (room.status !== 'AVAILABLE') {
@@ -91,10 +94,10 @@ export class ContractsService {
       additionalCharges: input.additional_charges,
     });
 
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     // DATABASE TRANSACTION
     // Semua langkah ini berhasil semua atau gagal semua
-    // ──────────────────────────────────────────
+    // ------------------------------------------------
     const result = await prisma.$transaction(async (tx) => {
       // 1. Buat record contract
       const contract = await tx.contract.create({
@@ -239,7 +242,7 @@ export class ContractsService {
           orderBy: [{ periodYear: 'asc' }, { periodMonth: 'asc' }],
           include: {
             payments: {
-              select: { id: true, amount: true, paymentDate: true, status: true },
+              select: { id: true, amount: true, paymentDate: true },
             },
           },
         },
@@ -256,10 +259,7 @@ export class ContractsService {
   // ────────────────────────────────────────────────
   // GET EXPIRING CONTRACTS
   // ────────────────────────────────────────────────
-  async getExpiringContracts(
-    ownerId: string,
-    query: ExpiringContractQueryInput,
-  ) {
+  async getExpiringContracts(ownerId: string, query: ExpiringContractQueryInput) {
     const now = new Date();
     const futureDate = new Date(now.getTime() + query.days * 24 * 60 * 60 * 1000);
 
@@ -295,11 +295,7 @@ export class ContractsService {
   // ────────────────────────────────────────────────
   // TERMINATE CONTRACT
   // ────────────────────────────────────────────────
-  async terminateContract(
-    contractId: string,
-    ownerId: string,
-    input: TerminateContractInput,
-  ) {
+  async terminateContract(contractId: string, ownerId: string, input: TerminateContractInput) {
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, ownerId },
       include: { room: true, tenant: true },
@@ -394,11 +390,7 @@ export class ContractsService {
   // ────────────────────────────────────────────────
   // RENEW CONTRACT
   // ────────────────────────────────────────────────
-  async renewContract(
-    contractId: string,
-    ownerId: string,
-    input: RenewContractInput,
-  ) {
+  async renewContract(contractId: string, ownerId: string, input: RenewContractInput) {
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, ownerId },
     });
@@ -435,11 +427,7 @@ export class ContractsService {
       tenantId: contract.tenantId,
       roomId: contract.roomId,
       propertyId: (await prisma.room.findUnique({ where: { id: contract.roomId } }))!.propertyId,
-      startDate: new Date(
-        contract.endDate.getFullYear(),
-        contract.endDate.getMonth() + 1,
-        1,
-      ),
+      startDate: new Date(contract.endDate.getFullYear(), contract.endDate.getMonth() + 1, 1),
       endDate: input.new_end_date,
       billingDate: contract.billingDate,
       monthlyRent: newMonthlyRent,

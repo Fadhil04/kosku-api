@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { reportsService } from './reports.service';
+import { reportsService } from './report.service';
 import {
   revenueReportSchema,
   occupancyReportSchema,
@@ -10,7 +10,6 @@ import {
 import { apiResponse } from '../../utils/apiResponse';
 
 export class ReportsController {
-
   async getRevenueReport(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.context!.userId;

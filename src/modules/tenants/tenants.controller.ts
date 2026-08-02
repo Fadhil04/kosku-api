@@ -1,14 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { tenantsService } from './tenants.service';
-import {
-  createTenantSchema,
-  updateTenantSchema,
-  tenantQuerySchema,
-} from './tenants.schema';
+import { createTenantSchema, updateTenantSchema, tenantQuerySchema } from './tenants.schema';
 import { apiResponse } from '../../utils/apiResponse';
 
 export class TenantsController {
-
   async createTenant(req: Request, res: Response, next: NextFunction) {
     try {
       const ownerId = req.context!.userId;
@@ -37,7 +32,7 @@ export class TenantsController {
 
   async getTenantById(req: Request, res: Response, next: NextFunction) {
     try {
-      const { tenantId } = req.params;
+      const { tenantId } = req.params as { tenantId: string };
       const ownerId = req.context!.userId;
       const data = await tenantsService.getTenantById(tenantId, ownerId);
       return apiResponse.success(res, data);
@@ -48,7 +43,7 @@ export class TenantsController {
 
   async updateTenant(req: Request, res: Response, next: NextFunction) {
     try {
-      const { tenantId } = req.params;
+      const { tenantId } = req.params as { tenantId: string };
       const ownerId = req.context!.userId;
       const input = updateTenantSchema.parse(req.body);
       const data = await tenantsService.updateTenant(tenantId, ownerId, input);
