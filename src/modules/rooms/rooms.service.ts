@@ -107,11 +107,37 @@ export class RoomsService {
       prisma.room.count({ where }),
     ]);
 
-    const roomsFormatted = rooms.map((room) => ({
-      ...room,
-      active_contract: room.contracts[0] || null,
-      contracts: undefined,
-    }));
+    const roomsFormatted = rooms.map((room) => {
+      const ac = room.contracts[0] || null;
+      return {
+        id: room.id,
+        property_id: room.propertyId,
+        room_number: room.roomNumber,
+        floor: room.floor,
+        type: room.type,
+        size_sqm: room.sizeSqm ? Number(room.sizeSqm) : null,
+        base_price: Number(room.basePrice),
+        facilities: room.facilities,
+        photos: room.photos,
+        status: room.status,
+        notes: room.notes,
+        created_at: room.createdAt,
+        updated_at: room.updatedAt,
+        active_contract: ac
+          ? {
+              id: ac.id,
+              start_date: ac.startDate,
+              end_date: ac.endDate,
+              monthly_rent: Number(ac.monthlyRent),
+              tenant: {
+                id: ac.tenant.id,
+                full_name: ac.tenant.fullName,
+                phone_number: ac.tenant.phoneNumber ?? null,
+              },
+            }
+          : null,
+      };
+    });
 
     return {
       data: roomsFormatted,
@@ -126,15 +152,21 @@ export class RoomsService {
     await propertiesService.verifyPropertyOwnership(propertyId, ownerId);
 
     const rooms = await prisma.room.findMany({
-      where: {
-        propertyId,
-        status: 'AVAILABLE',
-        deletedAt: null,
-      },
+      where: { propertyId, status: 'AVAILABLE', deletedAt: null },
       orderBy: [{ floor: 'asc' }, { roomNumber: 'asc' }],
     });
 
-    return rooms;
+    return rooms.map((room) => ({
+      id: room.id,
+      room_number: room.roomNumber,
+      floor: room.floor,
+      type: room.type,
+      size_sqm: room.sizeSqm ? Number(room.sizeSqm) : null,
+      base_price: Number(room.basePrice),
+      facilities: room.facilities,
+      status: room.status,
+      notes: room.notes,
+    }));
   }
 
   // ------------------------------------------------
@@ -176,10 +208,37 @@ export class RoomsService {
       throw new AppError('Kamar tidak ditemukan', 404, 'ROOM_NOT_FOUND');
     }
 
-    // Hitung statistik kamar
     const stats = await this.getRoomStats(roomId);
 
-    return { ...room, stats };
+    return {
+      id: room.id,
+      property_id: room.propertyId,
+      room_number: room.roomNumber,
+      floor: room.floor,
+      type: room.type,
+      size_sqm: room.sizeSqm ? Number(room.sizeSqm) : null,
+      base_price: Number(room.basePrice),
+      facilities: room.facilities,
+      photos: room.photos,
+      status: room.status,
+      notes: room.notes,
+      created_at: room.createdAt,
+      updated_at: room.updatedAt,
+      contracts: room.contracts.map((c) => ({
+        id: c.id,
+        start_date: c.startDate,
+        end_date: c.endDate,
+        monthly_rent: Number(c.monthlyRent),
+        status: c.status,
+        tenant: {
+          id: c.tenant.id,
+          full_name: c.tenant.fullName,
+          email: c.tenant.email ?? null,
+          phone_number: c.tenant.phoneNumber ?? null,
+        },
+      })),
+      stats,
+    };
   }
 
   // ------------------------------------------------
@@ -202,7 +261,17 @@ export class RoomsService {
       },
     });
 
-    return updated;
+    return {
+      id: updated.id,
+      property_id: updated.propertyId,
+      room_number: updated.roomNumber,
+      floor: updated.floor,
+      type: updated.type,
+      size_sqm: updated.sizeSqm ? Number(updated.sizeSqm) : null,
+      base_price: Number(updated.basePrice),
+      status: updated.status,
+      notes: updated.notes,
+    };
   }
 
   // ------------------------------------------------
@@ -254,7 +323,6 @@ export class RoomsService {
       },
     });
 
-    // Catat perubahan di audit log
     await prisma.auditLog.create({
       data: {
         entityType: 'room',
@@ -267,7 +335,12 @@ export class RoomsService {
       },
     });
 
-    return updated;
+    return {
+      id: updated.id,
+      room_number: updated.roomNumber,
+      status: updated.status,
+      notes: updated.notes,
+    };
   }
 
   // ------------------------------------------------

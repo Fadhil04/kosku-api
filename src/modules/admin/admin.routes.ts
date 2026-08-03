@@ -2,14 +2,51 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import { authorize } from '../../middleware/authorize';
 import { schedulerQueue } from '../../jobs/queues/scheduler.queue';
+import { prisma } from '../../config/database';
 import { apiResponse } from '../../utils/apiResponse';
 
 const router = Router();
 
 router.use(authenticate, authorize('owner'));
 
-// Trigger manual untuk testing — JANGAN expose ini di production
-// tanpa proteksi tambahan atau hapus sama sekali setelah testing
+// ── Backfill: Set createdByOwnerId untuk tenant lama yang belum punya ────────
+// Dipanggil sekali saja setelah migrasi schema
+router.post('/backfill/tenant-owner', async (req, res, next) => {
+  try {
+    const ownerId = req.context!.userId;
+
+    // Cari semua tenant yang pernah berkontrak dengan owner ini
+    // tapi belum punya createdByOwnerId
+    const contracts = await prisma.contract.findMany({
+      where: { ownerId },
+      select: { tenantId: true },
+      distinct: ['tenantId'],
+    });
+
+    const tenantIds = contracts.map((c) => c.tenantId);
+
+    if (tenantIds.length === 0) {
+      return apiResponse.success(res, { updated: 0 }, 'Tidak ada tenant yang perlu diupdate');
+    }
+
+    const result = await prisma.tenant.updateMany({
+      where: {
+        id: { in: tenantIds },
+        createdByOwnerId: null, // hanya yang belum diset
+      },
+      data: { createdByOwnerId: ownerId },
+    });
+
+    return apiResponse.success(
+      res,
+      { updated: result.count },
+      `Berhasil update ${result.count} tenant`,
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/trigger/bill-reminders', async (_req, res, next) => {
   try {
     const job = await schedulerQueue.add('check-bill-reminders', {});

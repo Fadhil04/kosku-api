@@ -7,21 +7,75 @@ import { getPagination, getPaginationMeta } from '../../utils/pagination';
 import { welcomeTenantTemplate } from '../../utils/emailTemplates';
 import type { CreateTenantInput, UpdateTenantInput, TenantQueryInput } from './tenants.schema';
 
+// ── Helper: normalize tenant ke snake_case ────────────────────────
+function normalizeTenant(t: {
+  id: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string | null;
+  idCardNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  isActive?: boolean;
+  createdAt: Date;
+  active_contract?: {
+    id: string;
+    room: { roomNumber: string; property: { name: string } };
+  } | null;
+  contracts?: Array<{
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    monthlyRent: unknown;
+    status: string;
+    room: { roomNumber: string; property: { name: string } };
+  }>;
+}) {
+  return {
+    id: t.id,
+    email: t.email,
+    full_name: t.fullName,
+    phone_number: t.phoneNumber ?? null,
+    id_card_number: t.idCardNumber ?? null,
+    emergency_contact_name: t.emergencyContactName ?? null,
+    emergency_contact_phone: t.emergencyContactPhone ?? null,
+    is_active: t.isActive ?? true,
+    created_at: t.createdAt,
+    ...(t.active_contract !== undefined && {
+      active_contract: t.active_contract
+        ? {
+            id: t.active_contract.id,
+            room: {
+              room_number: t.active_contract.room.roomNumber,
+              property: { name: t.active_contract.room.property.name },
+            },
+          }
+        : null,
+    }),
+    ...(t.contracts && {
+      contracts: t.contracts.map((c) => ({
+        id: c.id,
+        start_date: c.startDate,
+        end_date: c.endDate,
+        monthly_rent: Number(c.monthlyRent),
+        status: c.status,
+        room: {
+          room_number: c.room.roomNumber,
+          property: { name: c.room.property.name },
+        },
+      })),
+    }),
+  };
+}
+
 export class TenantsService {
   // ------------------------------------------------
   // CREATE TENANT (didaftarkan owner)
   // ------------------------------------------------
   async createTenant(ownerId: string, input: CreateTenantInput) {
-    const existingTenant = await prisma.tenant.findUnique({
-      where: { email: input.email },
-    });
-
+    const existingTenant = await prisma.tenant.findUnique({ where: { email: input.email } });
     if (existingTenant) {
-      throw new AppError(
-        'Email penghuni sudah terdaftar di sistem',
-        409,
-        'TENANT_EMAIL_ALREADY_EXISTS',
-      );
+      throw new AppError('Email penghuni sudah terdaftar di sistem', 409, 'TENANT_EMAIL_ALREADY_EXISTS');
     }
 
     const tempPassword = generateTemporaryPassword();
@@ -36,17 +90,10 @@ export class TenantsService {
         idCardNumber: input.id_card_number,
         emergencyContactName: input.emergency_contact_name,
         emergencyContactPhone: input.emergency_contact_phone,
-      },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phoneNumber: true,
-        createdAt: true,
+        createdByOwnerId: ownerId, // tandai siapa yang membuat
       },
     });
 
-    // Catat audit log
     await prisma.auditLog.create({
       data: {
         entityType: 'tenant',
@@ -58,8 +105,6 @@ export class TenantsService {
       },
     });
 
-    // Kirim email berisi kredensial — TANPA info kamar dulu,
-    // karena tenant belum tentu langsung punya kontrak
     const template = welcomeTenantTemplate({
       fullName: tenant.fullName,
       email: tenant.email,
@@ -68,40 +113,52 @@ export class TenantsService {
       roomNumber: '-',
     });
 
-    await sendEmail({
-      to: tenant.email,
-      subject: template.subject,
-      html: template.html,
-    });
+    await sendEmail({ to: tenant.email, subject: template.subject, html: template.html });
 
-    return tenant;
+    return normalizeTenant(tenant);
   }
 
   // ------------------------------------------------
-  // GET ALL TENANTS (yang pernah/sedang menghuni properti owner)
+  // GET ALL TENANTS — semua tenant yang pernah dibuat owner ini
+  // ATAU pernah/sedang berkontrak dengan owner ini (semua status)
   // ------------------------------------------------
   async getTenants(ownerId: string, query: TenantQueryInput) {
     const { skip, take, page, limit } = getPagination(query);
 
-    // Ambil tenant_id yang pernah punya kontrak dengan owner ini
-    const contractFilter: Record<string, unknown> = { ownerId };
-    if (query.property_id) {
-      contractFilter.room = { propertyId: query.property_id };
-    }
-    if (query.status === 'active') {
-      contractFilter.status = 'ACTIVE';
-    }
+    // Tenant yang dibuat oleh owner ini
+    const createdByOwner = await prisma.tenant.findMany({
+      where: { createdByOwnerId: ownerId, deletedAt: null },
+      select: { id: true },
+    });
 
-    const relevantTenantIds = await prisma.contract.findMany({
+    // Tenant yang pernah berkontrak dengan owner ini (ANY status — ACTIVE, TERMINATED, EXPIRED, dll)
+    // TIDAK filter by status agar penghuni lama tetap muncul
+    const contractFilter: Record<string, unknown> = { ownerId };
+    if (query.property_id) contractFilter.room = { propertyId: query.property_id };
+    // Khusus filter 'active' hanya untuk keperluan filter UI, bukan untuk tenant dropdown
+    if (query.status === 'active') contractFilter.status = 'ACTIVE';
+
+    const fromContracts = await prisma.contract.findMany({
       where: contractFilter,
       select: { tenantId: true },
       distinct: ['tenantId'],
     });
 
-    const tenantIds = relevantTenantIds.map((c) => c.tenantId);
+    // Gabungkan, deduplicate
+    const allIds = [
+      ...new Set([
+        ...createdByOwner.map((t) => t.id),
+        ...fromContracts.map((c) => c.tenantId),
+      ]),
+    ];
+
+    // Jika tidak ada sama sekali, return kosong
+    if (allIds.length === 0) {
+      return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
+    }
 
     const where = {
-      id: { in: tenantIds },
+      id: { in: allIds },
       deletedAt: null,
       ...(query.search && {
         OR: [
@@ -117,18 +174,11 @@ export class TenantsService {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          phoneNumber: true,
-          createdAt: true,
-        },
       }),
       prisma.tenant.count({ where }),
     ]);
 
-    // Tambahkan info kontrak aktif untuk tiap tenant
+    // Ambil info kontrak aktif untuk tiap tenant
     const tenantsWithContract = await Promise.all(
       tenants.map(async (tenant) => {
         const activeContract = await prisma.contract.findFirst({
@@ -143,7 +193,7 @@ export class TenantsService {
             },
           },
         });
-        return { ...tenant, active_contract: activeContract };
+        return normalizeTenant({ ...tenant, active_contract: activeContract });
       }),
     );
 
@@ -161,21 +211,9 @@ export class TenantsService {
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId, deletedAt: null },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phoneNumber: true,
-        idCardNumber: true,
-        emergencyContactName: true,
-        emergencyContactPhone: true,
-        createdAt: true,
-      },
     });
 
-    if (!tenant) {
-      throw new AppError('Penghuni tidak ditemukan', 404, 'TENANT_NOT_FOUND');
-    }
+    if (!tenant) throw new AppError('Penghuni tidak ditemukan', 404, 'TENANT_NOT_FOUND');
 
     const contracts = await prisma.contract.findMany({
       where: { tenantId, ownerId },
@@ -195,7 +233,7 @@ export class TenantsService {
       },
     });
 
-    return { ...tenant, contracts };
+    return normalizeTenant({ ...tenant, contracts });
   }
 
   // ------------------------------------------------
@@ -208,24 +246,29 @@ export class TenantsService {
       where: { id: tenantId },
       data: {
         ...(input.full_name && { fullName: input.full_name }),
-        ...(input.phone_number && { phoneNumber: input.phone_number }),
-        ...(input.id_card_number && { idCardNumber: input.id_card_number }),
-        ...(input.emergency_contact_name && {
+        ...(input.phone_number !== undefined && { phoneNumber: input.phone_number }),
+        ...(input.id_card_number !== undefined && { idCardNumber: input.id_card_number }),
+        ...(input.emergency_contact_name !== undefined && {
           emergencyContactName: input.emergency_contact_name,
         }),
-        ...(input.emergency_contact_phone && {
+        ...(input.emergency_contact_phone !== undefined && {
           emergencyContactPhone: input.emergency_contact_phone,
         }),
       },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        phoneNumber: true,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        entityType: 'tenant',
+        entityId: tenantId,
+        action: 'UPDATED',
+        newValues: input,
+        performedBy: ownerId,
+        performerRole: 'owner',
       },
     });
 
-    return updated;
+    return normalizeTenant(updated);
   }
 
   // ------------------------------------------------

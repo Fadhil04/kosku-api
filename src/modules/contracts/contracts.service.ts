@@ -2,7 +2,7 @@ import { prisma } from '../../config/database';
 import { sendEmail } from '../../config/email';
 import { AppError } from '../../middleware/errorHandler';
 import { getPagination, getPaginationMeta } from '../../utils/pagination';
-import { generateBillsForContract, generateSingleBill } from '../../utils/billGenerator';
+import { generateBillsForContract } from '../../utils/billGenerator';
 import { contractCreatedTenantTemplate } from '../../utils/emailTemplates';
 import type {
   CreateContractInput,
@@ -12,40 +12,91 @@ import type {
   ExpiringContractQueryInput,
 } from './contracts.schema';
 
-const MONTH_NAMES = [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
-];
+// ── Helper: normalize contract dari Prisma ke snake_case ──────────
+function normalizeContract(c: {
+  id: string;
+  roomId: string;
+  tenantId: string;
+  ownerId: string;
+  startDate: Date;
+  endDate: Date;
+  monthlyRent: unknown;
+  depositAmount: unknown;
+  depositStatus: string;
+  billingDate: number;
+  additionalCharges: unknown;
+  status: string;
+  terminationDate?: Date | null;
+  terminationReason?: string | null;
+  terminatedBy?: string | null;
+  notes?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  tenant?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phoneNumber?: string | null;
+  };
+  room?: {
+    roomNumber: string;
+    property?: { id: string; name: string };
+  };
+  _count?: { bills: number };
+  [key: string]: unknown;
+}) {
+  return {
+    id: c.id,
+    room_id: c.roomId,
+    tenant_id: c.tenantId,
+    owner_id: c.ownerId,
+    start_date: c.startDate,
+    end_date: c.endDate,
+    monthly_rent: Number(c.monthlyRent),
+    deposit_amount: Number(c.depositAmount),
+    deposit_status: c.depositStatus,
+    billing_date: c.billingDate,
+    additional_charges: c.additionalCharges,
+    status: c.status,
+    termination_date: c.terminationDate ?? null,
+    termination_reason: c.terminationReason ?? null,
+    notes: c.notes ?? null,
+    created_at: c.createdAt,
+    updated_at: c.updatedAt,
+    ...(c.tenant && {
+      tenant: {
+        id: c.tenant.id,
+        full_name: c.tenant.fullName,
+        email: c.tenant.email,
+        phone_number: c.tenant.phoneNumber ?? null,
+      },
+    }),
+    ...(c.room && {
+      room: {
+        room_number: c.room.roomNumber,
+        ...(c.room.property && {
+          property: { id: c.room.property.id, name: c.room.property.name },
+        }),
+      },
+    }),
+    ...('_count' in c && c._count ? { _count: c._count } : {}),
+  };
+}
 
 export class ContractsService {
   // ------------------------------------------------
-  // CREATE CONTRACT — inti dari kompleksitas sistem ini
+  // CREATE CONTRACT
   // ------------------------------------------------
   async createContract(ownerId: string, input: CreateContractInput) {
-    // Validasi room: harus milik owner ini dan berstatus AVAILABLE
     const room = await prisma.room.findFirst({
       where: { id: input.room_id, deletedAt: null },
       include: { property: true },
     });
 
-    if (!room) {
-      throw new AppError('Kamar tidak ditemukan', 404, 'ROOM_NOT_FOUND');
-    }
-
+    if (!room) throw new AppError('Kamar tidak ditemukan', 404, 'ROOM_NOT_FOUND');
     if (room.property.ownerId !== ownerId) {
       throw new AppError('Kamu tidak memiliki akses ke kamar ini', 403, 'ROOM_ACCESS_DENIED');
     }
-
     if (room.status !== 'AVAILABLE') {
       throw new AppError(
         `Kamar ${room.roomNumber} sedang tidak tersedia (status: ${room.status})`,
@@ -54,36 +105,24 @@ export class ContractsService {
       );
     }
 
-    // Validasi tenant: pastikan tidak punya kontrak aktif lain dengan owner ini
     const tenant = await prisma.tenant.findUnique({
       where: { id: input.tenant_id, deletedAt: null },
     });
-
-    if (!tenant) {
-      throw new AppError('Penghuni tidak ditemukan', 404, 'TENANT_NOT_FOUND');
-    }
+    if (!tenant) throw new AppError('Penghuni tidak ditemukan', 404, 'TENANT_NOT_FOUND');
 
     const existingActiveContract = await prisma.contract.findFirst({
-      where: {
-        tenantId: input.tenant_id,
-        ownerId,
-        status: 'ACTIVE',
-      },
+      where: { tenantId: input.tenant_id, ownerId, status: 'ACTIVE' },
     });
-
     if (existingActiveContract) {
       throw new AppError(
-        'Penghuni ini masih memiliki kontrak aktif di kamar lain. ' +
-          'Akhiri kontrak yang lama terlebih dahulu.',
+        'Penghuni ini masih memiliki kontrak aktif di kamar lain. Akhiri kontrak lama terlebih dahulu.',
         409,
         'TENANT_HAS_ACTIVE_CONTRACT',
       );
     }
 
-    // Generate semua bills sebelum masuk transaction
-    // (perhitungan murni, tidak perlu di dalam transaction)
     const billsToCreate = generateBillsForContract({
-      contractId: '', // akan diisi setelah contract dibuat
+      contractId: '',
       tenantId: input.tenant_id,
       roomId: input.room_id,
       propertyId: room.propertyId,
@@ -94,12 +133,7 @@ export class ContractsService {
       additionalCharges: input.additional_charges,
     });
 
-    // ------------------------------------------------
-    // DATABASE TRANSACTION
-    // Semua langkah ini berhasil semua atau gagal semua
-    // ------------------------------------------------
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Buat record contract
       const contract = await tx.contract.create({
         data: {
           roomId: input.room_id,
@@ -117,24 +151,15 @@ export class ContractsService {
         },
       });
 
-      // 2. Ubah status room jadi OCCUPIED
-      await tx.room.update({
-        where: { id: input.room_id },
-        data: { status: 'OCCUPIED' },
-      });
+      await tx.room.update({ where: { id: input.room_id }, data: { status: 'OCCUPIED' } });
 
-      // 3. Generate semua bills dengan contractId yang benar
       const billsWithContractId = billsToCreate.map((bill) => ({
         ...bill,
         contractId: contract.id,
         additionalCharges: bill.additionalCharges as unknown as object,
       }));
+      await tx.bill.createMany({ data: billsWithContractId });
 
-      await tx.bill.createMany({
-        data: billsWithContractId,
-      });
-
-      // 4. Catat audit log
       await tx.auditLog.create({
         data: {
           entityType: 'contract',
@@ -155,30 +180,28 @@ export class ContractsService {
       return { contract, billsCount: billsWithContractId.length };
     });
 
-    // Email dikirim setelah transaction berhasil commit
-    // (di luar transaction karena ini side effect eksternal,
-    // jika transaction di-rollback, email tidak perlu dikirim)
-    const template = contractCreatedTenantTemplate({
-      fullName: tenant.fullName,
-      propertyName: room.property.name,
-      roomNumber: room.roomNumber,
-      startDate: input.start_date.toLocaleDateString('id-ID'),
-      endDate: input.end_date.toLocaleDateString('id-ID'),
-      monthlyRent: input.monthly_rent.toLocaleString('id-ID'),
-    });
-
     await sendEmail({
       to: tenant.email,
-      subject: template.subject,
-      html: template.html,
-    }).catch((err) => {
-      // Email gagal tidak boleh menggagalkan keseluruhan proses
-      // karena kontrak sudah berhasil dibuat. Cukup log errornya.
-      console.error('Gagal mengirim email konfirmasi kontrak:', err);
-    });
+      subject: contractCreatedTenantTemplate({
+        fullName: tenant.fullName,
+        propertyName: room.property.name,
+        roomNumber: room.roomNumber,
+        startDate: input.start_date.toLocaleDateString('id-ID'),
+        endDate: input.end_date.toLocaleDateString('id-ID'),
+        monthlyRent: input.monthly_rent.toLocaleString('id-ID'),
+      }).subject,
+      html: contractCreatedTenantTemplate({
+        fullName: tenant.fullName,
+        propertyName: room.property.name,
+        roomNumber: room.roomNumber,
+        startDate: input.start_date.toLocaleDateString('id-ID'),
+        endDate: input.end_date.toLocaleDateString('id-ID'),
+        monthlyRent: input.monthly_rent.toLocaleString('id-ID'),
+      }).html,
+    }).catch((err) => console.error('Gagal mengirim email konfirmasi kontrak:', err));
 
     return {
-      ...result.contract,
+      ...normalizeContract(result.contract),
       bills_generated: result.billsCount,
     };
   }
@@ -194,9 +217,7 @@ export class ContractsService {
       ...(query.room_id && { roomId: query.room_id }),
       ...(query.tenant_id && { tenantId: query.tenant_id }),
       ...(query.status && { status: query.status }),
-      ...(query.property_id && {
-        room: { propertyId: query.property_id },
-      }),
+      ...(query.property_id && { room: { propertyId: query.property_id } }),
     };
 
     const [contracts, total] = await Promise.all([
@@ -206,9 +227,7 @@ export class ContractsService {
         take,
         orderBy: { createdAt: 'desc' },
         include: {
-          tenant: {
-            select: { id: true, fullName: true, email: true, phoneNumber: true },
-          },
+          tenant: { select: { id: true, fullName: true, email: true, phoneNumber: true } },
           room: {
             select: {
               roomNumber: true,
@@ -222,7 +241,7 @@ export class ContractsService {
     ]);
 
     return {
-      data: contracts,
+      data: contracts.map(normalizeContract),
       meta: getPaginationMeta(total, page, limit),
     };
   }
@@ -234,26 +253,40 @@ export class ContractsService {
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, ownerId },
       include: {
-        tenant: true,
+        tenant: { select: { id: true, fullName: true, email: true, phoneNumber: true } },
         room: {
           include: { property: { select: { id: true, name: true, address: true } } },
         },
         bills: {
           orderBy: [{ periodYear: 'asc' }, { periodMonth: 'asc' }],
           include: {
-            payments: {
-              select: { id: true, amount: true, paymentDate: true },
-            },
+            payments: { select: { id: true, amount: true, paymentDate: true } },
           },
         },
       },
     });
 
-    if (!contract) {
-      throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
-    }
+    if (!contract) throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
 
-    return contract;
+    return {
+      ...normalizeContract(contract),
+      bills: contract.bills.map((b) => ({
+        id: b.id,
+        period_month: b.periodMonth,
+        period_year: b.periodYear,
+        due_date: b.dueDate,
+        base_rent: Number(b.baseRent),
+        total_amount: Number(b.totalAmount),
+        discount_amount: Number(b.discountAmount),
+        status: b.status,
+        paid_at: b.paidAt,
+        payments: b.payments.map((p) => ({
+          id: p.id,
+          amount: Number(p.amount),
+          payment_date: p.paymentDate,
+        })),
+      })),
+    };
   }
 
   // ────────────────────────────────────────────────
@@ -272,24 +305,20 @@ export class ContractsService {
       },
       orderBy: { endDate: 'asc' },
       include: {
-        tenant: { select: { fullName: true, email: true, phoneNumber: true } },
+        tenant: { select: { id: true, fullName: true, email: true, phoneNumber: true } },
         room: {
           select: {
             roomNumber: true,
-            property: { select: { name: true } },
+            property: { select: { id: true, name: true } },
           },
         },
       },
     });
 
-    const withDaysRemaining = contracts.map((contract) => {
-      const daysRemaining = Math.ceil(
-        (contract.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      return { ...contract, days_remaining: daysRemaining };
-    });
-
-    return withDaysRemaining;
+    return contracts.map((c) => ({
+      ...normalizeContract(c),
+      days_remaining: Math.ceil((c.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+    }));
   }
 
   // ────────────────────────────────────────────────
@@ -301,35 +330,20 @@ export class ContractsService {
       include: { room: true, tenant: true },
     });
 
-    if (!contract) {
-      throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
-    }
-
+    if (!contract) throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
     if (contract.status === 'TERMINATED') {
-      throw new AppError(
-        'Kontrak ini sudah diterminasi sebelumnya',
-        409,
-        'CONTRACT_ALREADY_TERMINATED',
-      );
+      throw new AppError('Kontrak ini sudah diterminasi', 409, 'CONTRACT_ALREADY_TERMINATED');
     }
-
     if (contract.status === 'EXPIRED') {
-      throw new AppError(
-        'Kontrak yang sudah berakhir tidak bisa diterminasi',
-        409,
-        'CONTRACT_ALREADY_EXPIRED',
-      );
+      throw new AppError('Kontrak yang sudah berakhir tidak bisa diterminasi', 409, 'CONTRACT_ALREADY_EXPIRED');
     }
 
     const depositStatus =
-      input.deposit_action === 'REFUND_FULL'
+      input.deposit_action === 'REFUND_FULL' || input.deposit_action === 'REFUND_PARTIAL'
         ? 'REFUNDED'
-        : input.deposit_action === 'REFUND_PARTIAL'
-          ? 'REFUNDED'
-          : contract.depositStatus;
+        : contract.depositStatus;
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Update contract jadi TERMINATED
       const updatedContract = await tx.contract.update({
         where: { id: contractId },
         data: {
@@ -341,14 +355,8 @@ export class ContractsService {
         },
       });
 
-      // 2. Ubah status room jadi NEEDS_MAINTENANCE
-      await tx.room.update({
-        where: { id: contract.roomId },
-        data: { status: 'NEEDS_MAINTENANCE' },
-      });
+      await tx.room.update({ where: { id: contract.roomId }, data: { status: 'NEEDS_MAINTENANCE' } });
 
-      // 3. Cancel bills yang belum jatuh tempo setelah tanggal terminasi
-      // (waive, bukan delete, supaya histori tetap ada)
       const cancelledBills = await tx.bill.updateMany({
         where: {
           contractId,
@@ -361,18 +369,13 @@ export class ContractsService {
         },
       });
 
-      // 4. Audit log
       await tx.auditLog.create({
         data: {
           entityType: 'contract',
           entityId: contractId,
           action: 'TERMINATED',
           oldValues: { status: contract.status },
-          newValues: {
-            status: 'TERMINATED',
-            terminationDate: input.termination_date,
-            reason: input.termination_reason,
-          },
+          newValues: { status: 'TERMINATED', terminationDate: input.termination_date, reason: input.termination_reason },
           performedBy: ownerId,
           performerRole: 'owner',
         },
@@ -382,7 +385,7 @@ export class ContractsService {
     });
 
     return {
-      ...result.updatedContract,
+      ...normalizeContract(result.updatedContract),
       cancelled_bills: result.cancelledBillsCount,
     };
   }
@@ -391,42 +394,24 @@ export class ContractsService {
   // RENEW CONTRACT
   // ────────────────────────────────────────────────
   async renewContract(contractId: string, ownerId: string, input: RenewContractInput) {
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, ownerId },
-    });
-
-    if (!contract) {
-      throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
-    }
-
+    const contract = await prisma.contract.findFirst({ where: { id: contractId, ownerId } });
+    if (!contract) throw new AppError('Kontrak tidak ditemukan', 404, 'CONTRACT_NOT_FOUND');
     if (contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED') {
-      throw new AppError(
-        'Hanya kontrak aktif atau yang sudah berakhir yang bisa diperpanjang',
-        422,
-        'CONTRACT_CANNOT_RENEW',
-      );
+      throw new AppError('Hanya kontrak aktif atau yang sudah berakhir yang bisa diperpanjang', 422, 'CONTRACT_CANNOT_RENEW');
     }
-
     if (input.new_end_date <= contract.endDate) {
-      throw new AppError(
-        'Tanggal selesai baru harus lebih lambat dari tanggal selesai saat ini',
-        400,
-        'INVALID_RENEWAL_DATE',
-      );
+      throw new AppError('Tanggal selesai baru harus lebih lambat dari tanggal selesai saat ini', 400, 'INVALID_RENEWAL_DATE');
     }
 
     const newMonthlyRent = input.new_monthly_rent || Number(contract.monthlyRent);
-    const additionalCharges = contract.additionalCharges as unknown as Array<{
-      name: string;
-      amount: number;
-    }>;
+    const additionalCharges = contract.additionalCharges as unknown as Array<{ name: string; amount: number }>;
+    const room = await prisma.room.findUnique({ where: { id: contract.roomId } });
 
-    // Generate bills untuk periode tambahan (dari bulan setelah endDate lama sampai endDate baru)
     const additionalBills = generateBillsForContract({
       contractId: contract.id,
       tenantId: contract.tenantId,
       roomId: contract.roomId,
-      propertyId: (await prisma.room.findUnique({ where: { id: contract.roomId } }))!.propertyId,
+      propertyId: room!.propertyId,
       startDate: new Date(contract.endDate.getFullYear(), contract.endDate.getMonth() + 1, 1),
       endDate: input.new_end_date,
       billingDate: contract.billingDate,
@@ -437,11 +422,7 @@ export class ContractsService {
     const result = await prisma.$transaction(async (tx) => {
       const updatedContract = await tx.contract.update({
         where: { id: contractId },
-        data: {
-          endDate: input.new_end_date,
-          monthlyRent: newMonthlyRent,
-          status: 'ACTIVE',
-        },
+        data: { endDate: input.new_end_date, monthlyRent: newMonthlyRent, status: 'ACTIVE' },
       });
 
       if (additionalBills.length > 0) {
@@ -469,7 +450,7 @@ export class ContractsService {
     });
 
     return {
-      ...result.updatedContract,
+      ...normalizeContract(result.updatedContract),
       new_bills_generated: result.newBillsCount,
     };
   }

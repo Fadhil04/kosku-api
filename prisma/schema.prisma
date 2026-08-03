@@ -35,6 +35,7 @@ model Tenant {
   idCardUrl             String?     @map("id_card_url")
   emergencyContactName  String?     @map("emergency_contact_name")
   emergencyContactPhone String?     @map("emergency_contact_phone")
+  createdByOwnerId      String?     @map("created_by_owner_id")
   isActive              Boolean     @default(true) @map("is_active")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
@@ -135,8 +136,6 @@ model Bill {
   discountAmount       Decimal    @default(0) @map("discount_amount") @db.Decimal(12, 2)
   discountReason       String?    @map("discount_reason")
   totalAmount          Decimal    @map("total_amount") @db.Decimal(12, 2)
-  lateFeePercentage    Decimal    @default(2.0) @map("late_fee_percentage") @db.Decimal(5, 2)
-  lateFeeMaxPercentage Decimal    @default(10.0) @map("late_fee_max_percentage") @db.Decimal(5, 2)
   status               BillStatus @default(UNPAID)
   paidAt               DateTime?  @map("paid_at")
   notes                String?

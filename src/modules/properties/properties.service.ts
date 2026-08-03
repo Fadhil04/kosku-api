@@ -72,9 +72,20 @@ export class PropertiesService {
       properties.map(async (property) => {
         const stats = await this.getPropertyQuickStats(property.id);
         return {
-          ...property,
-          _count: undefined,
-          total_rooms: property._count.rooms,
+          id: property.id,
+          owner_id: property.ownerId,
+          name: property.name,
+          address: property.address,
+          city: property.city,
+          province: property.province,
+          postal_code: property.postalCode ?? null,
+          description: property.description ?? null,
+          rules: property.rules ?? null,
+          facilities: property.facilities,
+          photos: property.photos,
+          is_active: property.isActive,
+          created_at: property.createdAt,
+          updated_at: property.updatedAt,
           stats,
         };
       }),
@@ -91,23 +102,22 @@ export class PropertiesService {
   // ------------------------------------------------
   async getPropertyById(propertyId: string, ownerId: string) {
     const property = await prisma.property.findFirst({
-      where: {
-        id: propertyId,
-        ownerId,
-        deletedAt: null,
-      },
+      where: { id: propertyId, ownerId, deletedAt: null },
       include: {
         rooms: {
           where: { deletedAt: null },
           orderBy: { roomNumber: 'asc' },
-          select: {
-            id: true,
-            roomNumber: true,
-            floor: true,
-            type: true,
-            basePrice: true,
-            status: true,
-            facilities: true,
+          include: {
+            contracts: {
+              where: { status: 'ACTIVE' },
+              select: {
+                id: true,
+                tenant: { select: { id: true, fullName: true } },
+                endDate: true,
+                monthlyRent: true,
+              },
+              take: 1,
+            },
           },
         },
       },
@@ -119,7 +129,45 @@ export class PropertiesService {
 
     const stats = await this.getPropertyDetailStats(propertyId);
 
-    return { ...property, stats };
+    return {
+      id: property.id,
+      owner_id: property.ownerId,
+      name: property.name,
+      address: property.address,
+      city: property.city,
+      province: property.province,
+      postal_code: property.postalCode ?? null,
+      description: property.description ?? null,
+      rules: property.rules ?? null,
+      facilities: property.facilities,
+      photos: property.photos,
+      is_active: property.isActive,
+      created_at: property.createdAt,
+      updated_at: property.updatedAt,
+      rooms: property.rooms.map((r) => ({
+        id: r.id,
+        room_number: r.roomNumber,
+        floor: r.floor,
+        type: r.type,
+        base_price: Number(r.basePrice),
+        size_sqm: r.sizeSqm ? Number(r.sizeSqm) : null,
+        status: r.status,
+        facilities: r.facilities,
+        notes: r.notes,
+        active_contract: r.contracts[0]
+          ? {
+              id: r.contracts[0].id,
+              end_date: r.contracts[0].endDate,
+              monthly_rent: Number(r.contracts[0].monthlyRent),
+              tenant: {
+                id: r.contracts[0].tenant.id,
+                full_name: r.contracts[0].tenant.fullName,
+              },
+            }
+          : null,
+      })),
+      stats,
+    };
   }
 
   // ------------------------------------------------
@@ -143,7 +191,19 @@ export class PropertiesService {
       },
     });
 
-    return updated;
+    return {
+      id: updated.id,
+      name: updated.name,
+      address: updated.address,
+      city: updated.city,
+      province: updated.province,
+      postal_code: updated.postalCode ?? null,
+      description: updated.description ?? null,
+      rules: updated.rules ?? null,
+      facilities: updated.facilities,
+      photos: updated.photos,
+      is_active: updated.isActive,
+    };
   }
 
   // ------------------------------------------------
