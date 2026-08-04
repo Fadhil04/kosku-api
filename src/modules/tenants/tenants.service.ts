@@ -280,11 +280,17 @@ export class TenantsService {
     });
 
     if (!relation) {
-      throw new AppError(
-        'Penghuni tidak ditemukan atau tidak terkait dengan propertimu',
-        404,
-        'TENANT_NOT_FOUND',
-      );
+      const createdByOwner = await prisma.tenant.findFirst({
+        where: { id: tenantId, createdByOwnerId: ownerId, deletedAt: null },
+      });
+
+      if (!createdByOwner) {
+        throw new AppError(
+          'Penghuni tidak ditemukan atau tidak terkait dengan propertimu',
+          404,
+          'TENANT_NOT_FOUND',
+        );
+      }
     }
   }
 }

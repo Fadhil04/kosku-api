@@ -20,11 +20,11 @@ export const createContractSchema = z
   .refine(
     (data) => {
       const maxStartDate = new Date();
-      maxStartDate.setDate(maxStartDate.getDate() + 30);
+      maxStartDate.setDate(maxStartDate.getDate() + 365);
       return data.start_date <= maxStartDate;
     },
     {
-      message: 'Tanggal mulai tidak boleh lebih dari 30 hari dari sekarang',
+      message: 'Tanggal mulai tidak boleh lebih dari 1 tahun ke depan',
       path: ['start_date'],
     },
   )
