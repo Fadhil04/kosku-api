@@ -20,10 +20,10 @@ async function main() {
 
   const owner = await prisma.owner.create({
     data: {
-      email: 'owner@kosku.dev',
+      email: 'fadhilwicaksono425@gmail.com',
       passwordHash,
-      fullName: 'Budi Santoso',
-      phoneNumber: '081234567890',
+      fullName: 'Fadhil Wicaksono',
+      phoneNumber: '081382472135',
       isVerified: true,
     },
   });
