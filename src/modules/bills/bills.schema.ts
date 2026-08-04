@@ -3,16 +3,19 @@ import { z } from 'zod';
 export const billQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(10),
-  property_id: z.string().uuid().optional(),
-  tenant_id: z.string().uuid().optional(),
-  room_id: z.string().uuid().optional(),
-  status: z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'WAIVED']).optional(),
-  month: z.coerce.number().min(1).max(12).optional(),
-  year: z.coerce.number().min(2020).max(2100).optional(),
+  property_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
+  tenant_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
+  room_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
+  status: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.enum(['UNPAID', 'PARTIALLY_PAID', 'PAID', 'WAIVED']).optional(),
+  ),
+  month: z.preprocess((val) => (val === '' ? undefined : val), z.coerce.number().min(1).max(12).optional()),
+  year: z.preprocess((val) => (val === '' ? undefined : val), z.coerce.number().min(2020).max(2100).optional()),
 });
 
 export const overdueBillQuerySchema = z.object({
-  property_id: z.string().uuid().optional(),
+  property_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
   min_days_overdue: z.coerce.number().min(0).default(1),
 });
 

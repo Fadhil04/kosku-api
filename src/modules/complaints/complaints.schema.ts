@@ -30,12 +30,19 @@ export const addResponseSchema = z.object({
 export const complaintQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(10),
-  property_id: z.string().uuid().optional(),
-  status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
-  category: z
-    .enum(['FACILITY_DAMAGE', 'NEIGHBOR_DISTURBANCE', 'CLEANLINESS', 'SECURITY', 'OTHER'])
-    .optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  property_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
+  status: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
+  ),
+  category: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.enum(['FACILITY_DAMAGE', 'NEIGHBOR_DISTURBANCE', 'CLEANLINESS', 'SECURITY', 'OTHER']).optional(),
+  ),
+  priority: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  ),
 });
 
 export type CreateComplaintInput = z.infer<typeof createComplaintSchema>;

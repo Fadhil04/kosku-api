@@ -17,23 +17,32 @@ const roomFacilitiesEnum = z.enum([
   'refrigerator',
 ]);
 
+const photosSchema = z.preprocess(
+  (val) => (Array.isArray(val) ? val.filter((url) => typeof url === 'string' && url.trim().length > 0) : val),
+  z.array(z.string().url('Format URL foto tidak valid')).default([]),
+);
+
 export const createRoomSchema = z.object({
   room_number: z
     .string()
     .min(1, 'Nomor kamar wajib diisi')
     .max(20, 'Nomor kamar maksimal 20 karakter'),
-  floor: z.coerce.number().int().min(0).max(100).optional(),
+  floor: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.coerce.number().int().min(0).max(100).optional(),
+  ),
   type: z.string().min(1, 'Tipe kamar wajib diisi').max(50),
-  size_sqm: z.coerce.number().min(1).max(999).optional(),
+  size_sqm: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.coerce.number().min(1).max(999).optional(),
+  ),
   base_price: z.coerce
     .number()
     .min(100000, 'Harga minimal Rp 100.000')
     .max(100000000, 'Harga maksimal Rp 100.000.000'),
   facilities: z.array(z.string()).default([]),
-  photos: z
-    .array(z.string().url('Format URL foto tidak valid'))
-    .default([]),
-  notes: z.string().max(500).optional(),
+  photos: photosSchema,
+  notes: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(500).optional()),
 });
 
 export const updateRoomSchema = createRoomSchema.partial().omit({
