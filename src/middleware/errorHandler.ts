@@ -56,12 +56,14 @@ export const errorHandler = (
 
   // Zod validation errors
   if (err.constructor.name === 'ZodError') {
+    const zodError = err as unknown as { errors: Array<{ path: string[]; message: string }> };
+    const fieldErrors = zodError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
     res.status(400).json({
       success: false,
-      message: 'Validasi data gagal',
+      message: `Validasi data gagal: ${fieldErrors}`,
       error: {
         code: 'VALIDATION_FAILED',
-        details: (err as unknown as { errors: unknown[] }).errors,
+        details: zodError.errors,
       },
     });
     return;

@@ -3,31 +3,34 @@ import { z } from 'zod';
 const optionalPhoneSchema = z.preprocess(
   (val) => {
     if (typeof val === 'string') {
-      const cleaned = val.replace(/[\s-]/g, '');
+      const cleaned = val.replace(/[\s\-().+]/g, ''); // strip spasi, strip, tanda kurung, titik
       return cleaned === '' ? undefined : cleaned;
     }
-    return val;
+    return val === null ? undefined : val;
   },
-  z.string().regex(/^(\+62|62|0)8[0-9]{8,11}$/, 'Format nomor HP tidak valid (contoh: 08123456789)').optional(),
+  z.string().min(6, 'Nomor HP terlalu pendek').max(15, 'Nomor HP terlalu panjang').optional(),
 );
 
 const optionalIdCardSchema = z.preprocess(
   (val) => {
     if (typeof val === 'string') {
-      const cleaned = val.replace(/[\s-]/g, '');
+      const cleaned = val.replace(/[\s\-]/g, '');
       return cleaned === '' ? undefined : cleaned;
     }
-    return val;
+    return val === null ? undefined : val;
   },
-  z.string().regex(/^\d{16}$/, 'Nomor KTP harus 16 digit angka').optional(),
+  z.string().length(16, 'Nomor KTP harus 16 digit').regex(/^\d+$/, 'KTP hanya boleh angka').optional(),
 );
 
 export const createTenantSchema = z.object({
   email: z.string().email('Format email tidak valid'),
-  full_name: z.string().min(2).max(100),
+  full_name: z.string().min(2, 'Nama minimal 2 karakter').max(100),
   phone_number: optionalPhoneSchema,
   id_card_number: optionalIdCardSchema,
-  emergency_contact_name: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(100).optional()),
+  emergency_contact_name: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().max(100).optional(),
+  ),
   emergency_contact_phone: optionalPhoneSchema,
 });
 
@@ -35,7 +38,10 @@ export const updateTenantSchema = z.object({
   full_name: z.string().min(2).max(100).optional(),
   phone_number: optionalPhoneSchema,
   id_card_number: optionalIdCardSchema,
-  emergency_contact_name: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(100).optional()),
+  emergency_contact_name: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.string().max(100).optional(),
+  ),
   emergency_contact_phone: optionalPhoneSchema,
 });
 
