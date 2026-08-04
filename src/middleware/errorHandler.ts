@@ -55,15 +55,17 @@ export const errorHandler = (
   }
 
   // Zod validation errors
-  if (err.constructor.name === 'ZodError') {
-    const zodError = err as unknown as { errors: Array<{ path: string[]; message: string }> };
-    const fieldErrors = zodError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ');
+  if (err.constructor.name === 'ZodError' || err.name === 'ZodError') {
+    const zodIssues = (err as any).issues || (err as any).errors || [];
+    const fieldErrors = Array.isArray(zodIssues)
+      ? zodIssues.map((e: any) => `${e.path?.join('.') || 'unknown'}: ${e.message || 'invalid value'}`).join('; ')
+      : 'Validation error';
     res.status(400).json({
       success: false,
       message: `Validasi data gagal: ${fieldErrors}`,
       error: {
         code: 'VALIDATION_FAILED',
-        details: zodError.errors,
+        details: zodIssues,
       },
     });
     return;
