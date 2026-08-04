@@ -10,28 +10,24 @@ const passwordSchema = z
 
 const phoneSchema = z
   .string()
-  .regex(
-    /^(\+62|62|0)8[1-9][0-9]{6,10}$/,
-    'Format nomor telepon tidak valid (contoh: 08123456789)',
-  )
+  .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Format nomor telepon tidak valid (contoh: 08123456789)')
   .optional();
 
 export const registerOwnerSchema = z.object({
   email: z.string().email('Format email tidak valid'),
   password: passwordSchema,
-  full_name: z
-    .string()
-    .min(2, 'Nama minimal 2 karakter')
-    .max(100, 'Nama maksimal 100 karakter'),
+  full_name: z.string().min(2, 'Nama minimal 2 karakter').max(100, 'Nama maksimal 100 karakter'),
   phone_number: phoneSchema,
 });
 
 export const loginSchema = z.object({
   email: z.string().email('Format email tidak valid'),
   password: z.string().min(1, 'Password wajib diisi'),
-  role: z.enum(['owner', 'tenant'] as const, {
-    error: 'Role harus owner atau tenant',
-  }),
+  role: z
+    .enum(['owner', 'tenant'] as const, {
+      error: 'Role harus owner atau tenant',
+    })
+    .optional(),
 });
 
 export const refreshTokenSchema = z.object({

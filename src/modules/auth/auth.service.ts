@@ -57,9 +57,12 @@ export class AuthService {
   // LOGIN
   // ------------------------------------------------
   async login(input: LoginInput, ipAddress: string) {
-    const role = input.role;
+    const requestedRole = input.role;
+    const candidateRoles: Array<'owner' | 'tenant'> = requestedRole
+      ? [requestedRole]
+      : ['owner', 'tenant'];
 
-    // Ambil user sesuai role
+    let resolvedRole: 'owner' | 'tenant' = 'owner';
     let user: {
       id: string;
       email: string;
@@ -68,28 +71,35 @@ export class AuthService {
       isActive: boolean;
     } | null = null;
 
-    if (role === 'owner') {
-      user = await prisma.owner.findFirst({
-        where: { email: input.email, deletedAt: null },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          passwordHash: true,
-          isActive: true,
-        },
-      });
-    } else {
-      user = await prisma.tenant.findFirst({
-        where: { email: input.email, deletedAt: null },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          passwordHash: true,
-          isActive: true,
-        },
-      });
+    for (const role of candidateRoles) {
+      if (role === 'owner') {
+        user = await prisma.owner.findFirst({
+          where: { email: input.email, deletedAt: null },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            passwordHash: true,
+            isActive: true,
+          },
+        });
+      } else {
+        user = await prisma.tenant.findFirst({
+          where: { email: input.email, deletedAt: null },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            passwordHash: true,
+            isActive: true,
+          },
+        });
+      }
+
+      if (user) {
+        resolvedRole = role;
+        break;
+      }
     }
 
     if (!user) {
@@ -110,7 +120,7 @@ export class AuthService {
     }
 
     // Generate tokens
-    const tokenPayload = { userId: user.id, email: user.email, role };
+    const tokenPayload = { userId: user.id, email: user.email, role: resolvedRole };
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
@@ -118,7 +128,7 @@ export class AuthService {
     await prisma.refreshToken.create({
       data: {
         userId: user.id,
-        userType: role,
+        userType: resolvedRole,
         token: refreshToken,
         expiresAt: getRefreshTokenExpiry(),
       },
@@ -127,12 +137,12 @@ export class AuthService {
     // Catat audit log
     await prisma.auditLog.create({
       data: {
-        entityType: role,
+        entityType: resolvedRole,
         entityId: user.id,
         action: 'LOGIN',
         newValues: { ip: ipAddress },
         performedBy: user.id,
-        performerRole: role,
+        performerRole: resolvedRole,
         ipAddress,
       },
     });
@@ -145,7 +155,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         full_name: user.fullName,
-        role,
+        role: resolvedRole,
       },
     };
   }
