@@ -105,17 +105,24 @@ export class TenantsService {
       },
     });
 
-    const template = welcomeTenantTemplate({
-      fullName: tenant.fullName,
-      email: tenant.email,
-      tempPassword,
-      propertyName: '-',
-      roomNumber: '-',
-    });
+    try {
+      const template = welcomeTenantTemplate({
+        fullName: tenant.fullName,
+        email: tenant.email,
+        tempPassword,
+        propertyName: '-',
+        roomNumber: '-',
+      });
 
-    await sendEmail({ to: tenant.email, subject: template.subject, html: template.html });
+      await sendEmail({ to: tenant.email, subject: template.subject, html: template.html });
+    } catch (emailErr) {
+      console.warn('[TenantsService] Gagal mengirim email welcome (SMTP error), tenant tetap dibuat:', (emailErr as Error).message);
+    }
 
-    return normalizeTenant(tenant);
+    return {
+      ...normalizeTenant(tenant),
+      temp_password: tempPassword,
+    };
   }
 
   // ------------------------------------------------

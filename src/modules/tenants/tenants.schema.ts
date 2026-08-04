@@ -1,12 +1,24 @@
 import { z } from 'zod';
 
 const optionalPhoneSchema = z.preprocess(
-  (val) => (val === '' ? undefined : val),
-  z.string().regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Format nomor telepon tidak valid').optional(),
+  (val) => {
+    if (typeof val === 'string') {
+      const cleaned = val.replace(/[\s-]/g, '');
+      return cleaned === '' ? undefined : cleaned;
+    }
+    return val;
+  },
+  z.string().regex(/^(\+62|62|0)8[0-9]{8,11}$/, 'Format nomor HP tidak valid (contoh: 08123456789)').optional(),
 );
 
 const optionalIdCardSchema = z.preprocess(
-  (val) => (val === '' ? undefined : val),
+  (val) => {
+    if (typeof val === 'string') {
+      const cleaned = val.replace(/[\s-]/g, '');
+      return cleaned === '' ? undefined : cleaned;
+    }
+    return val;
+  },
   z.string().regex(/^\d{16}$/, 'Nomor KTP harus 16 digit angka').optional(),
 );
 
