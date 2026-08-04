@@ -9,6 +9,10 @@ export const transporter = nodemailer.createTransport({
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
   },
+  family: 4, // Memaksa koneksi menggunakan IPv4 (menghindari error IPv6 ENETUNREACH di Railway)
+  tls: {
+    rejectUnauthorized: false, // Menghindari masalah validasi sertifikat SSL di cloud
+  },
 });
 
 export const sendEmail = async (options: {
