@@ -1,7 +1,15 @@
 import { z } from 'zod';
 
 const facilitiesSchema = z.array(z.string()).default([]);
-const photosSchema = z.array(z.string().url('Format URL foto tidak valid')).default([]);
+const photosSchema = z.preprocess(
+  (val) => (Array.isArray(val) ? val.filter((url) => typeof url === 'string' && url.trim().length > 0) : val),
+  z.array(z.string().url('Format URL foto tidak valid')).default([]),
+);
+
+const optionalPostalCode = z.preprocess(
+  (val) => (val === '' ? undefined : val),
+  z.string().regex(/^\d{5}$/, 'Kode pos harus 5 digit angka').optional(),
+);
 
 export const createPropertySchema = z.object({
   name: z
@@ -11,12 +19,9 @@ export const createPropertySchema = z.object({
   address: z.string().min(10, 'Alamat terlalu pendek'),
   city: z.string().min(2, 'Kota wajib diisi'),
   province: z.string().min(2, 'Provinsi wajib diisi'),
-  postal_code: z
-    .string()
-    .regex(/^\d{5}$/, 'Kode pos harus 5 digit angka')
-    .optional(),
-  description: z.string().max(2000).optional(),
-  rules: z.string().max(2000).optional(),
+  postal_code: optionalPostalCode,
+  description: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(2000).optional()),
+  rules: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(2000).optional()),
   facilities: facilitiesSchema,
   photos: photosSchema,
 });

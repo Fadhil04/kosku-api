@@ -1,31 +1,30 @@
 import { z } from 'zod';
 
-const phoneSchema = z
-  .string()
-  .regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Format nomor telepon tidak valid')
-  .optional();
+const optionalPhoneSchema = z.preprocess(
+  (val) => (val === '' ? undefined : val),
+  z.string().regex(/^(\+62|62|0)8[1-9][0-9]{6,10}$/, 'Format nomor telepon tidak valid').optional(),
+);
+
+const optionalIdCardSchema = z.preprocess(
+  (val) => (val === '' ? undefined : val),
+  z.string().regex(/^\d{16}$/, 'Nomor KTP harus 16 digit angka').optional(),
+);
 
 export const createTenantSchema = z.object({
   email: z.string().email('Format email tidak valid'),
   full_name: z.string().min(2).max(100),
-  phone_number: phoneSchema,
-  id_card_number: z
-    .string()
-    .regex(/^\d{16}$/, 'Nomor KTP harus 16 digit angka')
-    .optional(),
-  emergency_contact_name: z.string().max(100).optional(),
-  emergency_contact_phone: phoneSchema,
+  phone_number: optionalPhoneSchema,
+  id_card_number: optionalIdCardSchema,
+  emergency_contact_name: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(100).optional()),
+  emergency_contact_phone: optionalPhoneSchema,
 });
 
 export const updateTenantSchema = z.object({
   full_name: z.string().min(2).max(100).optional(),
-  phone_number: phoneSchema,
-  id_card_number: z
-    .string()
-    .regex(/^\d{16}$/, 'Nomor KTP harus 16 digit angka')
-    .optional(),
-  emergency_contact_name: z.string().max(100).optional(),
-  emergency_contact_phone: phoneSchema,
+  phone_number: optionalPhoneSchema,
+  id_card_number: optionalIdCardSchema,
+  emergency_contact_name: z.preprocess((val) => (val === '' ? undefined : val), z.string().max(100).optional()),
+  emergency_contact_phone: optionalPhoneSchema,
 });
 
 export const tenantQuerySchema = z.object({
