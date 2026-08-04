@@ -30,7 +30,7 @@ export const updatePropertySchema = createPropertySchema.partial();
 
 export const propertyQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(50).default(10),
+  limit: z.coerce.number().min(1).max(200).default(10),
   search: z.string().optional(),
   city: z.string().optional(),
   is_active: z.coerce.boolean().optional(),

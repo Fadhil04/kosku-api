@@ -41,7 +41,7 @@ export const updateTenantSchema = z.object({
 
 export const tenantQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(50).default(10),
+  limit: z.coerce.number().min(1).max(200).default(10),
   property_id: z.string().uuid().optional(),
   status: z.enum(['active', 'inactive']).optional(),
   search: z.string().optional(),

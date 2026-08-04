@@ -29,7 +29,7 @@ export const addResponseSchema = z.object({
 
 export const complaintQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(50).default(10),
+  limit: z.coerce.number().min(1).max(200).default(10),
   property_id: z.preprocess((val) => (val === '' ? undefined : val), z.string().uuid().optional()),
   status: z.preprocess(
     (val) => (val === '' ? undefined : val),
