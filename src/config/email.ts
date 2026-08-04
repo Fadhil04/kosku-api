@@ -13,7 +13,7 @@ export const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false, // Menghindari masalah validasi sertifikat SSL di cloud
   },
-});
+} as any);
 
 export const sendEmail = async (options: {
   to: string;
