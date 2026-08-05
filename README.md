@@ -4,7 +4,7 @@ KosKu adalah platform digital terintegrasi untuk mengelola properti kos-kosan se
 
 Proyek ini terdiri dari dua bagian utama yang berada dalam satu workspace:
 1. **`kosku-api` (Backend):** RESTful API Server dan Background Worker berbasis Node.js, Express, TypeScript, PostgreSQL (Prisma), Redis, dan BullMQ.
-2. **`kosku-dashboard` (Frontend):** Dashboard interaktif berbasis web menggunakan React, Vite, TypeScript, Tailwind CSS, dan React Query.
+2. **`kosku-frontend` (Frontend):** Dashboard interaktif berbasis web menggunakan React, Vite, TypeScript, Tailwind CSS, dan React Query. Repositori nya bisa dilihat di link berikut: https://github.com/Fadhil04/kosku-frontend.git
 
 ---
 
